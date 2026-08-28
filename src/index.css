@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+.domine-bold {
+  font-family: 'Domine', Georgia, serif;
+  font-weight: 600;
+}
+
+.outfit-font {
+  font-family: 'Outfit', 'Inter', sans-serif;
+}
+
+.hero-bg {
+  background-color: #ffffff;
+  background-image: 
+    radial-gradient(at 15% 15%, rgba(134, 196, 152, 0.18) 0px, transparent 55%),
+    radial-gradient(at 85% 15%, rgba(47, 143, 75, 0.12) 0px, transparent 50%),
+    radial-gradient(at 50% 85%, rgba(209, 234, 212, 0.25) 0px, transparent 60%);
+}
+
+.subtle-grid {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom scrollbar for textareas and cards */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Shiny green gradient button */
+.btn-mota {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  background: linear-gradient(180deg, #2f8f4b 0%, #267a40 50%, #1f6333 100%);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 14px 0 rgba(36, 145, 68, 0.25);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-mota:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px 0 rgba(36, 145, 68, 0.35);
+}
+.btn-mota:active {
+  transform: scale(0.98);
+}
+.btn-mota::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 50%);
+  pointer-events: none;
+}
+
+/* Glass card styling */
+.glass-nav {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Laser scan animation */
+@keyframes laserScan {
+  0% {
+    top: 0%;
+    opacity: 0.8;
+  }
+  50% {
+    top: 92%;
+    opacity: 1;
+  }
+  100% {
+    top: 0%;
+    opacity: 0.8;
+  }
+}
+
+.laser-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #249144, #86c498, #249144, transparent);
+  box-shadow: 0 0 12px 2px rgba(36, 145, 68, 0.6);
+  animation: laserScan 2.5s ease-in-out infinite;
+}

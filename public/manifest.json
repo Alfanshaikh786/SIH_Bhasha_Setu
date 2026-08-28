@@ -1,0 +1,55 @@
+{
+  "short_name": "Adi Vaani",
+  "name": "Adi Vaani - Tribal Language & Translation Portal",
+  "description": "Multilingual AI translation and cultural preservation platform for Indian tribal languages.",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#249144",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "categories": ["education", "utilities", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Translator",
+      "short_name": "Translate",
+      "description": "Translate between English, Hindi and Santali",
+      "url": "/features/text-to-text",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Dictionary",
+      "short_name": "Dictionary",
+      "description": "Search 6,800+ tribal words and audio",
+      "url": "/resources/dictionary",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Learning Studio",
+      "short_name": "Learning",
+      "description": "Worksheets, 3D Flashcards & Quiz",
+      "url": "/features/learning-studio",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

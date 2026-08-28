@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <circle cx="50" cy="50" r="46" fill="#249144" />
+  <circle cx="50" cy="50" r="38" fill="#14532d" />
+  <path d="M50 20 L58 38 L78 40 L63 54 L68 74 L50 63 L32 74 L37 54 L22 40 L42 38 Z" fill="#86c498" opacity="0.3" />
+  <!-- Stylized AV / Tree / Sound motif -->
+  <path d="M50 24 C52 38 68 44 68 56 C68 66 60 74 50 74 C40 74 32 66 32 56 C32 44 48 38 50 24 Z" fill="#ffffff" />
+  <circle cx="50" cy="56" r="6" fill="#249144" />
+  <path d="M26 50 Q18 50 18 42" stroke="#d1ead4" stroke-width="3" stroke-linecap="round" fill="none" />
+  <path d="M74 50 Q82 50 82 42" stroke="#d1ead4" stroke-width="3" stroke-linecap="round" fill="none" />
+</svg>
