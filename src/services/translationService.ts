@@ -754,44 +754,26 @@ export interface OCRResult {
   boundingBoxes: { x: number; y: number; w: number; h: number; text: string }[];
 }
 
+import { extractTextFromImage } from './ocrService';
+
 export async function processImageOCR(
   imageSrc: string,
-  targetLangCode: string
+  targetLangCode: string,
+  onProgress?: (p: { status: string; progress: number }) => void
 ): Promise<OCRResult> {
-  await new Promise(resolve => setTimeout(resolve, 1200));
-
-  if (targetLangCode === 'sat' || imageSrc.includes('santali') || imageSrc.includes('olchiki')) {
-    return {
-      text: 'ᱡᱚᱦᱟᱨ • ᱥᱤᱠᱤᱞ ᱥᱮᱞ ᱵᱤᱰᱟᱹᱣ ᱦᱟᱥᱯᱟᱛᱟᱞ ᱨᱮ ᱦᱩᱭᱩᱜ ᱠᱟᱱᱟ᱾ ᱟᱯᱱᱟᱨ ᱦᱚᱲᱢᱚ ᱨᱮᱱᱟᱜ ᱡᱚᱛᱚᱱ ᱦᱟᱛᱟᱣ ᱢᱮ᱾',
-      detectedLanguage: 'Santali (Ol Chiki)',
-      confidence: 0.96,
-      boundingBoxes: [
-        { x: 10, y: 15, w: 80, h: 20, text: 'ᱡᱚᱦᱟᱨ' },
-        { x: 10, y: 40, w: 220, h: 25, text: 'ᱥᱤᱠᱤᱞ ᱥᱮᱞ ᱵᱤᱰᱟᱹᱣ ᱦᱟᱥᱯᱟᱛᱟᱞ ᱨᱮ ᱦᱩᱭᱩᱜ ᱠᱟᱱᱟ᱾' },
-        { x: 10, y: 70, w: 190, h: 25, text: 'ᱟᱯᱱᱟᱨ ᱦᱚᱲᱢᱚ ᱨᱮᱱᱟᱜ ᱡᱚᱛᱚᱱ ᱦᱟᱛᱟᱣ ᱢᱮ᱾' }
-      ]
-    };
-  }
-
-  if (targetLangCode === 'bhi' || imageSrc.includes('bhili')) {
-    return {
-      text: 'भीली जनजातीय विकास केंद्र • औषध वितरण एवं सिकल सेल जांच शिविर।',
-      detectedLanguage: 'Bhili (Devanagari)',
-      confidence: 0.94,
-      boundingBoxes: [
-        { x: 12, y: 20, w: 180, h: 22, text: 'भीली जनजातीय विकास केंद्र' },
-        { x: 12, y: 50, w: 240, h: 22, text: 'औषध वितरण एवं सिकल सेल जांच शिविर।' }
-      ]
-    };
-  }
+  const ocrLang = targetLangCode === 'eng' ? 'eng' : 'eng+hin';
+  const realRes = await extractTextFromImage(imageSrc, ocrLang, onProgress);
 
   return {
-    text: 'जनजातीय कार्य मंत्रालय, भारत सरकार • आदि वाणी भाषा संरक्षण परियोजना।',
-    detectedLanguage: 'Hindi / Tribal Bilingual',
-    confidence: 0.95,
-    boundingBoxes: [
-      { x: 15, y: 20, w: 200, h: 25, text: 'जनजातीय कार्य मंत्रालय' },
-      { x: 15, y: 55, w: 250, h: 25, text: 'आदि वाणी भाषा संरक्षण परियोजना।' }
-    ]
+    text: realRes.text,
+    detectedLanguage: realRes.detectedLanguage,
+    confidence: realRes.confidence,
+    boundingBoxes: realRes.lines.map((l, i) => ({
+      x: 10,
+      y: 20 + i * 30,
+      w: 200,
+      h: 24,
+      text: l
+    }))
   };
 }
