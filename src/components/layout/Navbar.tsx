@@ -352,12 +352,27 @@ export const Navbar: React.FC = () => {
                           <Layers className="w-6 h-6" />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d]">Flashcards</p>
-                          <p className="text-xs text-slate-500 mt-0.5">3D cards with Ol Chiki audio</p>
+                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d]">3D Audio Flashcards</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Interactive cards with spoken audio</p>
                         </div>
                       </Link>
 
-                      {/* Assessment & Quiz */}
+                      {/* Worksheets */}
+                      <Link
+                        to="/features/learning-studio?tab=worksheets"
+                        onClick={() => setActiveDropdown(null)}
+                        className="flex items-center gap-3.5 p-3.5 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition group bg-white shadow-xs"
+                      >
+                        <div className="w-12 h-12 rounded-xl bg-emerald-50 text-[#249144] flex items-center justify-center flex-shrink-0 group-hover:bg-[#249144] group-hover:text-white transition">
+                          <FileSpreadsheet className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d]">Worksheet Generator</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Solve live or export printable A4</p>
+                        </div>
+                      </Link>
+
+                      {/* Quiz and Assessment */}
                       <Link
                         to="/features/learning-studio?tab=assessment"
                         onClick={() => setActiveDropdown(null)}
@@ -367,7 +382,7 @@ export const Navbar: React.FC = () => {
                           <Award className="w-6 h-6" />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d]">Assessment</p>
+                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d]">Quiz and Assessment</p>
                           <p className="text-xs text-slate-500 mt-0.5">Language test & certificates</p>
                         </div>
                       </Link>
@@ -450,6 +465,7 @@ export const Navbar: React.FC = () => {
             <div className="flex flex-col gap-2">
               <Link
                 to="/"
+                onClick={() => setMobileMenuOpen(false)}
                 className="px-4 py-2.5 rounded-xl font-semibold text-slate-800 hover:bg-green-50 hover:text-[#249144] transition"
               >
                 Home
@@ -462,14 +478,26 @@ export const Navbar: React.FC = () => {
                   <span>Learning Studio (New)</span>
                 </p>
                 <div className="grid gap-1 mt-1 pl-2">
-                  <Link to="/features/learning-studio" className="px-3 py-2 text-xs sm:text-sm text-[#14532d] bg-green-50/80 font-bold rounded-lg flex items-center gap-2">
-                    <GraduationCap className="w-4 h-4 text-[#249144]" /> 3D Audio Flashcards
+                  <Link 
+                    to="/features/learning-studio?tab=flashcards" 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="px-3 py-2 text-xs sm:text-sm text-slate-700 hover:text-[#14532d] hover:bg-green-50 rounded-lg flex items-center gap-2"
+                  >
+                    <Layers className="w-4 h-4 text-[#249144]" /> 3D Audio Flashcards
                   </Link>
-                  <Link to="/features/learning-studio" className="px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-green-50 rounded-lg flex items-center gap-2">
+                  <Link 
+                    to="/features/learning-studio?tab=worksheets" 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="px-3 py-2 text-xs sm:text-sm text-slate-700 hover:text-[#14532d] hover:bg-green-50 rounded-lg flex items-center gap-2"
+                  >
                     <FileText className="w-4 h-4 text-[#249144]" /> Printable Worksheets Generator
                   </Link>
-                  <Link to="/features/learning-studio" className="px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-green-50 rounded-lg flex items-center gap-2">
-                    <Target className="w-4 h-4 text-[#249144]" /> Bilingual Quiz & Assessment
+                  <Link 
+                    to="/features/learning-studio?tab=assessment" 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="px-3 py-2 text-xs sm:text-sm text-slate-700 hover:text-[#14532d] hover:bg-green-50 rounded-lg flex items-center gap-2"
+                  >
+                    <Target className="w-4 h-4 text-[#249144]" /> Quiz and Assessment
                   </Link>
                 </div>
               </div>

@@ -31,7 +31,9 @@ import {
   CheckCircle2,
   AlertCircle,
   Play,
-  Share2
+  Share2,
+  Target,
+  Star
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import confetti from 'canvas-confetti';
@@ -44,13 +46,22 @@ type WorksheetExerciseType = 'matching' | 'tracing' | 'scramble' | 'mcq';
 export const LearningStudioPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab') as TabMode | null;
-  const [activeTab, setActiveTab] = useState<TabMode>(tabParam === 'flashcards' || tabParam === 'assessment' ? tabParam : 'worksheets');
+  const [activeTab, setActiveTab] = useState<TabMode>(
+    tabParam === 'flashcards' || tabParam === 'assessment' || tabParam === 'worksheets' 
+      ? tabParam 
+      : 'flashcards'
+  );
 
   useEffect(() => {
     if (tabParam === 'flashcards' || tabParam === 'worksheets' || tabParam === 'assessment') {
       setActiveTab(tabParam);
     }
   }, [tabParam]);
+
+  const handleTabChange = (newTab: TabMode) => {
+    setActiveTab(newTab);
+    setSearchParams({ tab: newTab });
+  };
 
   // ==========================================
   // 1. FLASHCARDS STATE
@@ -463,7 +474,268 @@ export const LearningStudioPage: React.FC = () => {
         </div>
 
         {/* ========================================================================= */}
-        {/* TAB 1: REVAMPED INTERACTIVE WORKSHEETS & GENERATOR                         */}
+        {/* TOP TAB SWITCHER (Flashcards, Worksheets, Quiz & Assessment)              */}
+        {/* ========================================================================= */}
+        <div className="flex justify-center print:hidden">
+          <div className="bg-slate-200/80 p-1.5 rounded-2xl flex flex-wrap items-center gap-1.5 max-w-2xl w-full">
+            <button
+              onClick={() => handleTabChange('flashcards')}
+              className={`flex-1 min-w-[140px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === 'flashcards'
+                  ? 'bg-white text-[#14532d] shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <Layers className="w-4 h-4 text-[#249144]" />
+              <span>3D Audio Flashcards</span>
+            </button>
+
+            <button
+              onClick={() => handleTabChange('worksheets')}
+              className={`flex-1 min-w-[140px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === 'worksheets'
+                  ? 'bg-white text-[#14532d] shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <FileText className="w-4 h-4 text-[#249144]" />
+              <span>Worksheet Generator</span>
+            </button>
+
+            <button
+              onClick={() => handleTabChange('assessment')}
+              className={`flex-1 min-w-[140px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === 'assessment'
+                  ? 'bg-white text-[#14532d] shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <Target className="w-4 h-4 text-[#249144]" />
+              <span>Quiz and Assessment</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* TAB 1: 3D AUDIO FLASHCARDS                                                */}
+        {/* ========================================================================= */}
+        {activeTab === 'flashcards' && currentCard && (
+          <div className="space-y-6 print:hidden">
+            {/* Top Toolbar */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-sm flex flex-wrap items-center justify-between gap-4">
+              {/* Category Filter */}
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-[#249144]" />
+                <span className="text-xs font-bold text-slate-700">Topic:</span>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => {
+                    setSelectedCategory(e.target.value);
+                    setCardIndex(0);
+                    setIsFlipped(false);
+                  }}
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 outline-none hover:border-[#249144] cursor-pointer"
+                >
+                  {categories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Stats and Controls */}
+              <div className="flex items-center gap-3">
+                <div className="text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+                  <span>Card <strong className="text-slate-900">{cardIndex + 1}</strong> of <strong className="text-slate-900">{flashcardDeck.length}</strong></span>
+                </div>
+                <div className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#249144]" />
+                  <span>Mastered: <strong className="text-[#14532d]">{masteredIds.length}</strong></span>
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+              <div 
+                className="bg-[#249144] h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${((cardIndex + 1) / flashcardDeck.length) * 100}%` }}
+              />
+            </div>
+
+            {/* 3D Interactive Flip Card */}
+            <div className="max-w-xl mx-auto py-4">
+              <div 
+                onClick={() => setIsFlipped(!isFlipped)}
+                className="cursor-pointer group select-none"
+                style={{ perspective: '1000px' }}
+              >
+                <div 
+                  className="relative w-full min-h-[340px] sm:min-h-[380px] rounded-3xl transition-transform duration-500 shadow-xl border border-slate-200/90"
+                  style={{ 
+                    transformStyle: 'preserve-3d',
+                    transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)'
+                  }}
+                >
+                  {/* FRONT SIDE (Ol Chiki + Romanized + Audio) */}
+                  <div 
+                    className="absolute inset-0 w-full h-full rounded-3xl bg-gradient-to-br from-white via-green-50/30 to-emerald-50/50 p-8 flex flex-col justify-between items-center text-center backface-hidden"
+                    style={{ backfaceVisibility: 'hidden' }}
+                  >
+                    <div className="w-full flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/80 border border-emerald-200 px-3 py-1 rounded-full uppercase tracking-wider">
+                        {currentCard.cat || 'Santali / Ol Chiki'}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleMastered(currentCard.id);
+                        }}
+                        className={`p-2 rounded-xl border transition ${
+                          masteredIds.includes(currentCard.id)
+                            ? 'bg-amber-100 border-amber-300 text-amber-700'
+                            : 'bg-white/80 border-slate-200 text-slate-400 hover:text-amber-500'
+                        }`}
+                        title="Mark as Learned"
+                      >
+                        <Star className="w-4 h-4 fill-current" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4 my-auto">
+                      {/* Ol Chiki Main Text */}
+                      <h2 className="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-wide font-sans py-2">
+                        {currentCard.sat}
+                      </h2>
+                      {/* Romanized Phonetic */}
+                      <p className="text-sm sm:text-base font-semibold text-[#14532d] bg-green-100/70 border border-green-200 px-4 py-1.5 rounded-full inline-block">
+                        🗣️ {currentCard.roman}
+                      </p>
+                    </div>
+
+                    <div className="w-full flex items-center justify-between pt-4 border-t border-emerald-100">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          playTextSpeech(currentCard.sat, 'sat');
+                        }}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#249144] hover:bg-[#1a7536] text-white text-xs font-bold shadow-md transition active:scale-95 cursor-pointer"
+                      >
+                        <Volume2 className="w-4 h-4" />
+                        <span>Listen Pronunciation</span>
+                      </button>
+
+                      <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+                        <RotateCw className="w-3.5 h-3.5" />
+                        <span>Tap to Flip</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* BACK SIDE (English + Hindi Meaning) */}
+                  <div 
+                    className="absolute inset-0 w-full h-full rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-8 flex flex-col justify-between items-center text-center text-white backface-hidden"
+                    style={{ 
+                      backfaceVisibility: 'hidden',
+                      transform: 'rotateY(180deg)'
+                    }}
+                  >
+                    <div className="w-full flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800 px-3 py-1 rounded-full uppercase tracking-wider">
+                        Meaning & Context
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleMastered(currentCard.id);
+                        }}
+                        className={`p-2 rounded-xl border transition ${
+                          masteredIds.includes(currentCard.id)
+                            ? 'bg-amber-400/20 border-amber-400 text-amber-400'
+                            : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-amber-400'
+                        }`}
+                        title="Mark as Learned"
+                      >
+                        <Star className="w-4 h-4 fill-current" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4 my-auto">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">English</span>
+                        <h3 className="text-2xl sm:text-3xl font-bold text-white">
+                          {currentCard.en}
+                        </h3>
+                      </div>
+
+                      <div className="space-y-1 pt-2 border-t border-slate-700/60 max-w-xs mx-auto">
+                        <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Hindi (हिन्दी)</span>
+                        <h4 className="text-xl sm:text-2xl font-bold text-emerald-200">
+                          {currentCard.hi}
+                        </h4>
+                      </div>
+                    </div>
+
+                    <div className="w-full flex items-center justify-between pt-4 border-t border-slate-800">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          playTextSpeech(currentCard.sat, 'sat');
+                        }}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition active:scale-95 cursor-pointer"
+                      >
+                        <Volume2 className="w-4 h-4" />
+                        <span>Hear Santali</span>
+                      </button>
+
+                      <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+                        <RotateCw className="w-3.5 h-3.5" />
+                        <span>Tap to Flip</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Navigation & Control Buttons */}
+              <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
+                <button
+                  onClick={handlePrevCard}
+                  className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-bold rounded-2xl border border-slate-200 shadow-xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Previous</span>
+                </button>
+
+                <button
+                  onClick={() => setIsFlipped(!isFlipped)}
+                  className="px-5 py-2.5 bg-[#249144] hover:bg-[#1a7536] text-white text-xs sm:text-sm font-bold rounded-2xl shadow-md transition active:scale-95 flex items-center gap-2 cursor-pointer"
+                >
+                  <RotateCw className="w-4 h-4" />
+                  <span>{isFlipped ? 'Show Front' : 'Flip Card'}</span>
+                </button>
+
+                <button
+                  onClick={handleNextCard}
+                  className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-bold rounded-2xl border border-slate-200 shadow-xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={handleShuffleCards}
+                  className="p-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-2xl border border-slate-200 shadow-xs transition active:scale-95 cursor-pointer"
+                  title="Shuffle Deck"
+                >
+                  <Shuffle className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 2: REVAMPED INTERACTIVE WORKSHEETS & GENERATOR                         */}
         {/* ========================================================================= */}
         {activeTab === 'worksheets' && (
           <div className="space-y-6">
