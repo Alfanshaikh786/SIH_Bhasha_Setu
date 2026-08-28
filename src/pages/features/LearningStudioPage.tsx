@@ -364,7 +364,7 @@ export const LearningStudioPage: React.FC = () => {
   // ==========================================
   // 3. ASSESSMENT & QUIZ STATE
   // ==========================================
-  const [quizQuestions, setQuizQuestions] = useState<{
+  interface QuizQuestion {
     id: string;
     question: string;
     targetLang: string;
@@ -372,7 +372,9 @@ export const LearningStudioPage: React.FC = () => {
     correctAnswer: string;
     pronunciation: string;
     type: 'translate' | 'listening';
-  }[]>([]);
+  }
+
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
 
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -383,7 +385,7 @@ export const LearningStudioPage: React.FC = () => {
 
   const startNewQuiz = () => {
     const shuffled = [...SANTALI_DATASET].sort(() => 0.5 - Math.random()).slice(0, 10);
-    const questions = shuffled.map((item, idx) => {
+    const questions: QuizQuestion[] = shuffled.map((item, idx) => {
       const distractors = SANTALI_DATASET
         .filter(d => d.id !== item.id)
         .sort(() => 0.5 - Math.random())
