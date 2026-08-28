@@ -27,7 +27,7 @@ export const PrivacyPolicyPage: React.FC = () => {
           <div>
             <h2 className="text-xl font-bold text-slate-900 domine-bold mb-2">1. Indigenous Linguistic Sovereignty</h2>
             <p>
-              All tribal folklore, audio samples, oral narratives, and manuscript scans submitted to the Adi Vaani platform are governed by the Indigenous Data Sovereignty Framework. The intellectual and cultural rights remain with the respective tribal communities and custodial clans.
+              All tribal folklore, audio samples, oral narratives, and manuscript scans submitted to the Bhasha Setu platform are governed by the Indigenous Data Sovereignty Framework. The intellectual and cultural rights remain with the respective tribal communities and custodial clans.
             </p>
           </div>
 

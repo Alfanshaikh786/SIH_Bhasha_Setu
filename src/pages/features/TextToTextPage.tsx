@@ -152,7 +152,7 @@ export const TextToTextPage: React.FC = () => {
     const element = document.createElement('a');
     const file = new Blob([`Source (${sourceLangObj.name}):\n${inputText}\n\nTranslation (${targetLangObj.name}):\n${outputText}`], { type: 'text/plain' });
     element.href = URL.createObjectURL(file);
-    element.download = `AdiVaani_Translation_${Date.now()}.txt`;
+    element.download = `BhashaSetu_Translation_${Date.now()}.txt`;
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);

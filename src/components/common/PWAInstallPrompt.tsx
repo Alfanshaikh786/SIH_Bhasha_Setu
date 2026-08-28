@@ -107,7 +107,7 @@ export const PWAInstallPrompt: React.FC = () => {
 
             <div className="flex-1 min-w-0">
               <h4 className="text-xs font-bold text-slate-900 leading-tight truncate flex items-center gap-1.5">
-                <span>Install Adi Vaani</span>
+                <span>Install Bhasha Setu</span>
                 <span className="text-[9px] bg-green-100 text-[#14532d] px-1.5 py-0.2 rounded-full font-bold">App</span>
               </h4>
               <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
@@ -154,7 +154,7 @@ export const PWAInstallPrompt: React.FC = () => {
                 <Download className="w-7 h-7" />
               </div>
               <h3 className="text-xl font-bold text-slate-900 domine-bold">
-                Install Adi Vaani App
+                Install Bhasha Setu App
               </h3>
               <p className="text-xs text-slate-500 max-w-xs mx-auto">
                 Use full-screen mode without browser bars, and access tribal translations faster.
@@ -204,7 +204,7 @@ export const PWAInstallPrompt: React.FC = () => {
                   </div>
                   <div className="flex items-start gap-2.5">
                     <span className="w-5 h-5 rounded-full bg-[#249144] text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">2</span>
-                    <span>Click the <strong>Install icon (⊕)</strong> or tap <strong>Menu (⋮) $\rightarrow$ "Install Adi Vaani"</strong>.</span>
+                    <span>Click the <strong>Install icon (⊕)</strong> or tap <strong>Menu (⋮) $\rightarrow$ "Install Bhasha Setu"</strong>.</span>
                   </div>
                   <div className="flex items-start gap-2.5">
                     <span className="w-5 h-5 rounded-full bg-[#249144] text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">3</span>
@@ -225,7 +225,7 @@ export const PWAInstallPrompt: React.FC = () => {
                   </div>
                   <div className="flex items-start gap-2.5">
                     <span className="w-5 h-5 rounded-full bg-[#249144] text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">3</span>
-                    <span>Tap <strong>"Install"</strong> to add the Adi Vaani icon to your home screen!</span>
+                    <span>Tap <strong>"Install"</strong> to add the Bhasha Setu icon to your home screen!</span>
                   </div>
                 </div>
               )}

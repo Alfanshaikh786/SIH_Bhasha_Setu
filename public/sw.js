@@ -1,5 +1,5 @@
-// Adi Vaani Progressive Web App (PWA) Service Worker
-const CACHE_NAME = 'adivaani-pwa-v1';
+// Bhasha Setu Progressive Web App (PWA) Service Worker
+const CACHE_NAME = 'bhasha-setu-pwa-v1';
 
 const PRECACHE_ASSETS = [
   '/',

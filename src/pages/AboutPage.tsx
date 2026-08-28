@@ -74,7 +74,7 @@ export const AboutPage: React.FC = () => {
         {/* 1. Header Section */}
         <div className="w-full flex flex-col items-center text-center space-y-4">
           <h1 className="domine-bold text-3xl sm:text-4xl md:text-5xl font-bold leading-tight text-slate-900">
-            About Adi Vaani
+            About Bhasha Setu
           </h1>
 
           {/* Underline Bar with Centered Green Accent */}
@@ -246,7 +246,7 @@ export const AboutPage: React.FC = () => {
               Tribal languages carry centuries of knowledge, traditions, songs, folklore, and cultural identity.
             </p>
             <p>
-              Adivaani bridges the digital gap by preserving linguistic diversity while enabling practical empowerment.
+              Bhasha Setu bridges the digital gap by preserving linguistic diversity while enabling practical empowerment.
             </p>
           </div>
         </div>

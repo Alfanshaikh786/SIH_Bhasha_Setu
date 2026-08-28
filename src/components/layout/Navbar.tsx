@@ -31,7 +31,7 @@ import {
   Shield,
   Globe
 } from 'lucide-react';
-import { AdiVaaniLogo } from '../common/AdiVaaniLogo';
+import { BhashaSetuLogo } from '../common/BhashaSetuLogo';
 import { LoginModal } from '../common/LoginModal';
 import { getCurrentUser, logoutUser } from '../../services/authService';
 
@@ -93,9 +93,9 @@ export const Navbar: React.FC = () => {
         <div ref={dropdownRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             
-            {/* Left: Official आदिVAAN! Logo */}
+            {/* Left: Official Bhasha Setu Logo */}
             <Link to="/" className="flex items-center group transition-transform hover:opacity-95">
-              <AdiVaaniLogo size="md" />
+              <BhashaSetuLogo size="md" />
             </Link>
 
             {/* Center Desktop Navigation */}

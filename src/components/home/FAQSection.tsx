@@ -83,7 +83,7 @@ export const FAQSection: React.FC = () => {
           <div className="absolute left-1/2 -translate-x-1/2 -top-[1px] h-[3px] w-16 sm:w-20 bg-[#86c498] rounded-full"></div>
         </div>
         <p className="mt-4 max-w-2xl text-sm sm:text-base md:text-lg text-slate-500">
-          Find comprehensive answers to common questions about the Adi Vaani translation platform.
+          Find comprehensive answers to common questions about the Bhasha Setu translation platform.
         </p>
       </div>
 

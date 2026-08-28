@@ -193,7 +193,7 @@ export const SpeechToTextPage: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `AdiVaani_Transcript_${Date.now()}.srt`;
+    a.download = `BhashaSetu_Transcript_${Date.now()}.srt`;
     a.click();
   };
 

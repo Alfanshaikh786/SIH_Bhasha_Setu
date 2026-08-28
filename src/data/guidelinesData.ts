@@ -36,7 +36,7 @@ export const MINISTRY_GUIDELINES: PolicyGuideline[] = [
     keyDirectives: [
       'Universal screening of 7 crore tribal population between 0-40 years.',
       'Distribution of Sickle Cell Status Cards (Green/Yellow/Red).',
-      'Integration of translation tools (Adi Vaani) for tribal language awareness campaigns.'
+      'Integration of translation tools (Bhasha Setu) for tribal language awareness campaigns.'
     ],
     pdfName: 'SCD_Elimination_Mission_Guidelines_MoTA.pdf',
     fileSize: '4.1 MB'

@@ -1087,7 +1087,7 @@ export const LearningStudioPage: React.FC = () => {
                   <div className="flex items-center justify-between text-xs text-slate-400 font-semibold mb-2">
                     <span>GOVERNMENT OF INDIA</span>
                     <span>MINISTRY OF TRIBAL AFFAIRS</span>
-                    <span>ADIVAANI LINGUISTIC PORTAL</span>
+                    <span>BHASHA SETU LINGUISTIC PORTAL</span>
                   </div>
                   <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 domine-bold tracking-tight">
                     Santali Language Classroom Activity Sheet
@@ -1530,7 +1530,7 @@ export const LearningStudioPage: React.FC = () => {
                   <div className="mt-8 p-8 sm:p-12 rounded-3xl border-4 border-amber-200 bg-gradient-to-br from-amber-50/50 via-white to-green-50/40 text-center space-y-6 shadow-xl relative overflow-hidden">
                     <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest border-b border-amber-100 pb-3">
                       <span>MINISTRY OF TRIBAL AFFAIRS</span>
-                      <span>ADIVAANI CERTIFICATION</span>
+                      <span>BHASHA SETU CERTIFICATION</span>
                     </div>
 
                     <div className="space-y-2">
@@ -1548,7 +1548,7 @@ export const LearningStudioPage: React.FC = () => {
 
                     <div className="flex items-center justify-between pt-6 border-t border-amber-100 text-xs font-semibold text-slate-500">
                       <div>Date: {new Date().toLocaleDateString()}</div>
-                      <div>Verified by AdiVaani Portal</div>
+                      <div>Verified by Bhasha Setu Portal</div>
                     </div>
                   </div>
                 )}

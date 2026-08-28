@@ -124,7 +124,7 @@ export const SUPPORTED_LANGUAGES: TribalLanguage[] = [
     importance: "Enables bilingual publication of tribal dictionaries, primers, and scientific documentation.",
     isTribal: false,
     samplePhrases: [
-      { text: 'Welcome to the Adi Vaani portal.', translation: 'आदि वाणी पोर्टल में आपका स्वागत है।', category: 'Greeting' },
+      { text: 'Welcome to the Bhasha Setu portal.', translation: 'भाषा सेतु पोर्टल में आपका स्वागत है।', category: 'Greeting' },
       { text: 'Empowering tribal communities through AI translation.', translation: 'एआई अनुवाद के माध्यम से जनजातीय समुदायों का सशक्तिकरण।', category: 'Mission' }
     ]
   }

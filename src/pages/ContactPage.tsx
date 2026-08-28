@@ -99,7 +99,7 @@ export const ContactPage: React.FC = () => {
                   Message Dispatched Successfully!
                 </h3>
                 <p className="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
-                  Thank you for contributing to the Adi Vaani ecosystem. Our linguistic research team will review your inquiry within 48 business hours.
+                  Thank you for contributing to the Bhasha Setu ecosystem. Our linguistic research team will review your inquiry within 48 business hours.
                 </p>
                 <button
                   onClick={() => setSubmitted(false)}

@@ -8,7 +8,7 @@ export const GalleryFeatureCards: React.FC = () => {
       {/* Section Header (Exact Match to User Screenshot) */}
       <div className="max-w-4xl mx-auto flex flex-col items-center text-center mb-10">
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#1e293b] tracking-tight" style={{ fontFamily: "'Domine', Georgia, serif" }}>
-          Adi Vaani Media Gallery
+          Bhasha Setu Media Gallery
         </h1>
 
         {/* Underline Bar with Centered Green Accent */}

@@ -106,7 +106,7 @@ export const VideoSubtitlePage: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `AdiVaani_Subtitles_${Date.now()}.srt`;
+    a.download = `BhashaSetu_Subtitles_${Date.now()}.srt`;
     a.click();
   };
 

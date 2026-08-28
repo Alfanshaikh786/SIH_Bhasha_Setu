@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, MapPin } from 'lucide-react';
-import { AdiVaaniLogo } from '../common/AdiVaaniLogo';
+import { BhashaSetuLogo } from '../common/BhashaSetuLogo';
 
 export const Footer: React.FC = () => {
   return (
@@ -12,7 +12,7 @@ export const Footer: React.FC = () => {
           {/* Col 1: Brand & Addresses */}
           <div className="space-y-5">
             <Link to="/" className="flex items-center gap-3">
-              <AdiVaaniLogo size="md" />
+              <BhashaSetuLogo size="md" />
             </Link>
 
             <div className="space-y-2 text-sm text-slate-600">

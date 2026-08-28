@@ -8,9 +8,9 @@ export interface StoredUser {
   createdAt: string;
 }
 
-const REGISTERED_USERS_KEY = 'adivaani_registered_users';
-const CURRENT_USER_KEY = 'adivaani_current_user';
-const REMEMBERED_CREDENTIALS_KEY = 'adivaani_remembered_credentials';
+const REGISTERED_USERS_KEY = 'bhasha_setu_registered_users';
+const CURRENT_USER_KEY = 'bhasha_setu_current_user';
+const REMEMBERED_CREDENTIALS_KEY = 'bhasha_setu_remembered_credentials';
 
 // Initialize with default admin/demo accounts if empty
 export const initAuthStorage = (): StoredUser[] => {
@@ -26,7 +26,7 @@ export const initAuthStorage = (): StoredUser[] => {
           createdAt: new Date().toISOString()
         },
         {
-          email: 'demo@adivaani.in',
+          email: 'demo@bhashasetu.in',
           password: 'password123',
           name: 'Tribal Researcher',
           role: 'Contributor',
