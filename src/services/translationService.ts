@@ -576,16 +576,17 @@ export async function translateText(
   let output = '';
 
   if (targetLangCode === 'sat' || targetLangCode === 'unr' || targetLangCode === 'hoc') {
-    // Check individual word matches in vocabulary
+    // Check individual word matches in vocabulary & phrase map
     const translatedWords = words.map(w => {
-      const vocab = lookupWord(w, sourceLangCode);
-      if (vocab) {
-        return vocab.sat;
-      }
-      const wLower = w.toLowerCase().replace(/[^a-z]/g, '');
+      const wLower = w.toLowerCase().replace(/[^a-z0-9]/gi, '');
       if (TRANSLATION_MAP[wLower] && TRANSLATION_MAP[wLower]['sat']) {
         return TRANSLATION_MAP[wLower]['sat'];
       }
+      const vocab = lookupWord(w, sourceLangCode);
+      if (vocab) return vocab.sat;
+      const santaliMatch = findSantaliMatch(wLower, 'eng') || findSantaliMatch(wLower, 'hin');
+      if (santaliMatch && santaliMatch.match) return santaliMatch.match.sat;
+
       // Ol Chiki transliteration fallback
       const olChikiMap: Record<string, string> = {
         'a': 'ᱟ', 'b': 'ᱵ', 'c': 'ᱪ', 'd': 'ᱫ', 'e': 'ᱮ', 'g': 'ᱜ', 'h': 'ᱦ',
@@ -600,21 +601,41 @@ export async function translateText(
   } else if (targetLangCode === 'hin') {
     // Word by word Hindi lookup
     const translatedHiWords = words.map(w => {
+      const wLower = w.toLowerCase().replace(/[^a-z0-9]/gi, '');
+      if (TRANSLATION_MAP[wLower] && TRANSLATION_MAP[wLower]['hin']) {
+        return TRANSLATION_MAP[wLower]['hin'];
+      }
       const vocab = lookupWord(w, sourceLangCode);
       if (vocab) return vocab.hi;
+      const santaliMatch = findSantaliMatch(wLower, 'eng') || findSantaliMatch(wLower, 'sat');
+      if (santaliMatch && santaliMatch.match) return santaliMatch.match.hi;
       return w;
     });
     output = translatedHiWords.join(' ');
   } else if (targetLangCode === 'eng') {
     // Word by word English lookup
     const translatedEnWords = words.map(w => {
+      const wLower = w.toLowerCase().replace(/[^a-z0-9]/gi, '');
+      if (TRANSLATION_MAP[wLower] && TRANSLATION_MAP[wLower]['eng']) {
+        return TRANSLATION_MAP[wLower]['eng'];
+      }
       const vocab = lookupWord(w, sourceLangCode);
       if (vocab) return vocab.en;
+      const santaliMatch = findSantaliMatch(wLower, 'hin') || findSantaliMatch(wLower, 'sat');
+      if (santaliMatch && santaliMatch.match) return santaliMatch.match.en;
       return w;
     });
     output = translatedEnWords.join(' ');
   } else {
-    output = `${targetLang?.name || targetLangCode}: ${trimmed}`;
+    // Other tribal languages (bhi, gon, kui, etc.)
+    const translatedTribalWords = words.map(w => {
+      const wLower = w.toLowerCase().replace(/[^a-z0-9]/gi, '');
+      if (TRANSLATION_MAP[wLower] && TRANSLATION_MAP[wLower][targetLangCode]) {
+        return TRANSLATION_MAP[wLower][targetLangCode];
+      }
+      return w;
+    });
+    output = translatedTribalWords.join(' ');
   }
 
   return {
