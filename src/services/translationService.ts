@@ -100,6 +100,184 @@ export function transliterateOlChikiToDevanagari(text: string): string {
   return result;
 }
 
+/**
+ * Transliterates Ol Chiki script text into Roman / Latin characters
+ */
+export function transliterateOlChikiToRoman(text: string): string {
+  let res = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (OL_CHIKI_TO_PHONETIC[ch]) {
+      res += OL_CHIKI_TO_PHONETIC[ch].en;
+    } else {
+      res += ch;
+    }
+  }
+  return res;
+}
+
+// Comprehensive Santali (Ol Chiki & Romanized) to English vocabulary & grammar mapping
+export const SANTALI_WORDS_TO_EN: Record<string, string> = {
+  'ᱤᱧᱟᱜ': 'My',
+  'ᱤᱧ': 'I',
+  'ᱟᱢᱟᱜ': 'Your',
+  'ᱟᱢ': 'You',
+  'ᱟᱵᱚᱣᱟᱜ': 'Our',
+  'ᱟᱵᱚ': 'We',
+  'ᱟᱞᱮᱭᱟᱜ': 'Our',
+  'ᱟᱞᱮ': 'We',
+  'ᱩᱱᱤᱭᱟᱜ': 'His / Her',
+  'ᱩᱱᱤ': 'He / She',
+  'ᱱᱩᱭ': 'This',
+  'ᱱᱚᱣᱟ': 'This',
+  'ᱧᱩᱛᱩᱢ': 'name',
+  'ᱠᱟᱱᱟ': 'is',
+  'ᱠᱟᱱᱟᱭ': 'is',
+  'ᱠᱟᱱᱟᱹᱧ': 'am',
+  'ᱠᱟᱱᱟᱧ': 'am',
+  'ᱢᱮᱱᱟᱜ-ᱟ': 'is',
+  'ᱢᱮᱱᱟᱜᱼᱟ': 'is',
+  'ᱢᱮᱱᱟᱹᱧᱟ': 'am',
+  'ᱢᱮᱱᱟᱢᱟ': 'are',
+  'ᱪᱮᱫ': 'what',
+  'ᱚᱠᱟ': 'which',
+  'ᱚᱠᱟᱨᱮ': 'where',
+  'ᱪᱮᱫ ᱞᱮᱠᱟ': 'how',
+  'ᱪᱤᱞᱠᱟ': 'how',
+  'ᱵᱮᱥ': 'good',
+  'ᱜᱮ': '',
+  'ᱫᱚ': '',
+  'ᱦᱚᱲᱢᱚ': 'health',
+  'ᱟᱹᱛᱩ': 'village',
+  'ᱫᱤᱥᱚᱢ': 'country',
+  'ᱜᱟᱹᱭ': 'cow',
+  'ᱰᱟᱝᱜᱽᱨᱟ': 'bull',
+  'ᱥᱮᱛᱟ': 'dog',
+  'ᱯᱩᱥᱤ': 'cat',
+  'ᱵᱤᱞᱟᱹᱭ': 'cat',
+  'ᱦᱟᱥᱯᱟᱛᱟᱞ': 'hospital',
+  'ᱨᱟᱱ': 'medicine',
+  'ᱫᱟᱜ': 'water',
+  'ᱥᱟᱯᱷᱟ': 'clean',
+  'ᱯᱩᱛᱷᱤ': 'book',
+  'ᱤᱛᱩᱱ ᱟᱥᱲᱟ': 'school',
+  'ᱢᱟᱪᱮᱛ': 'teacher',
+  'ᱯᱟᱹᱴᱷᱩᱣᱟᱹ': 'student',
+  'ᱚᱲᱟᱜ': 'house',
+  'ᱠᱟᱹᱢᱤ': 'homework',
+  'ᱦᱤᱲᱤᱧ': 'forgot',
+  'ᱯᱩᱨᱟᱹᱣ': 'finished',
+  'ᱮᱦᱚᱵ': 'started',
+  'ᱮᱴᱠᱮᱴᱚᱬᱮ': 'problem',
+  'ᱥᱚᱞᱦᱮ': 'solve',
+  'ᱫᱟᱲᱮᱭᱟᱜ': 'able to',
+  'ᱵᱟᱹᱧ': 'could not',
+  'ᱵᱟᱝ': 'not',
+  'ᱦᱮᱸ': 'yes',
+  'ᱡᱚᱦᱟᱨ': 'Hello',
+  // Romanized variants
+  'injag': 'My',
+  'inyag': 'My',
+  'ingag': 'My',
+  'inj': 'I',
+  'ing': 'I',
+  'amag': 'Your',
+  'am': 'You',
+  'nyutum': 'name',
+  'nutum': 'name',
+  'kana': 'is',
+  'kanay': 'is',
+  'babulal': 'Babulal',
+  'seta': 'dog',
+  'pusi': 'cat',
+  'bilae': 'cat',
+  'dare': 'tree',
+  'daag': 'water',
+  'puthi': 'book',
+  'machet': 'teacher'
+};
+
+// Comprehensive Santali (Ol Chiki & Romanized) to Hindi vocabulary & grammar mapping
+export const SANTALI_WORDS_TO_HI: Record<string, string> = {
+  'ᱤᱧᱟᱜ': 'मेरा',
+  'ᱤᱧ': 'मैं',
+  'ᱟᱢᱟᱜ': 'आपका',
+  'ᱟᱢ': 'आप',
+  'ᱟᱵᱚᱣᱟᱜ': 'हमारा',
+  'ᱟᱵᱚ': 'हम',
+  'ᱟᱞᱮᱭᱟᱜ': 'हमारा',
+  'ᱟᱞᱮ': 'हम',
+  'ᱩᱱᱤᱭᱟᱜ': 'उसका',
+  'ᱩᱱᱤ': 'वह',
+  'ᱱᱩᱭ': 'यह',
+  'ᱱᱚᱣᱟ': 'यह',
+  'ᱧᱩᱛᱩᱢ': 'नाम',
+  'ᱠᱟᱱᱟ': 'है',
+  'ᱠᱟᱱᱟᱭ': 'है',
+  'ᱠᱟᱱᱟᱹᱧ': 'हूँ',
+  'ᱠᱟᱱᱟᱧ': 'हूँ',
+  'ᱢᱮᱱᱟᱜ-ᱟ': 'है',
+  'ᱢᱮᱱᱟᱜᱼᱟ': 'है',
+  'ᱢᱮᱱᱟᱹᱧᱟ': 'हूँ',
+  'ᱢᱮᱱᱟᱢᱟ': 'हैं',
+  'ᱪᱮᱫ': 'क्या',
+  'ᱚᱠᱟ': 'कौन सा',
+  'ᱚᱠᱟᱨᱮ': 'कहाँ',
+  'ᱪᱮᱫ ᱞᱮᱠᱟ': 'कैसे',
+  'ᱪᱤᱞᱠᱟ': 'कैसे',
+  'ᱵᱮᱥ': 'अच्छा',
+  'ᱜᱮ': '',
+  'ᱫᱚ': '',
+  'ᱦᱚᱲᱢᱚ': 'स्वास्थ्य',
+  'ᱟᱹᱛᱩ': 'गाँव',
+  'ᱫᱤᱥᱚᱢ': 'देश',
+  'ᱜᱟᱹᱭ': 'गाय',
+  'ᱰᱟᱝᱜᱽᱨᱟ': 'बैल',
+  'ᱥᱮᱛᱟ': 'कुत्ता',
+  'ᱯᱩᱥᱤ': 'बिल्ली',
+  'ᱵᱤᱞᱟᱹᱭ': 'बिल्ली',
+  'ᱦᱟᱥᱯᱟᱛᱟᱞ': 'अस्पताल',
+  'ᱨᱟᱱ': 'दवा',
+  'ᱫᱟᱜ': 'पानी',
+  'ᱥᱟᱯᱷᱟ': 'साफ',
+  'ᱯᱩᱛᱷᱤ': 'किताब',
+  'ᱤᱛᱩᱱ ᱟᱥᱲᱟ': 'स्कूल',
+  'ᱢᱟᱪᱮᱛ': 'शिक्षक',
+  'ᱯᱟᱹᱴᱷᱩᱣᱟᱹ': 'छात्र',
+  'ᱚᱲᱟᱜ': 'घर',
+  'ᱠᱟᱹᱢᱤ': 'काम',
+  'ᱦᱤᱲᱤᱧ': 'भूल गया',
+  'ᱯᱩᱨᱟᱹᱣ': 'पूरा किया',
+  'ᱮᱦᱚᱵ': 'शुरू किया',
+  'ᱮᱴᱠᱮᱴᱚᱬᱮ': 'समस्या',
+  'ᱥᱚᱞᱦᱮ': 'हल',
+  'ᱫᱟᱲᱮᱭᱟᱜ': 'सका',
+  'ᱵᱟᱹᱧ': 'नहीं',
+  'ᱵᱟᱝ': 'नहीं',
+  'ᱦᱮᱸ': 'हाँ',
+  'ᱡᱚᱦᱟᱨ': 'नमस्ते',
+  // Romanized variants
+  'injag': 'मेरा',
+  'inyag': 'मेरा',
+  'ingag': 'मेरा',
+  'inj': 'मैं',
+  'ing': 'मैं',
+  'amag': 'आपका',
+  'am': 'आप',
+  'nyutum': 'नाम',
+  'nutum': 'नाम',
+  'kana': 'है',
+  'kanay': 'है',
+  'babulal': 'बाबूलाल',
+  'seta': 'कुत्ता',
+  'pusi': 'बिल्ली',
+  'bilae': 'बिल्ली',
+  'dare': 'पेड़',
+  'daag': 'पानी',
+  'puthi': 'किताब',
+  'machet': 'शिक्षक'
+};
+
 // Comprehensive bilingual phrase bank for realistic instant translation across major tribal languages
 const TRANSLATION_MAP: Record<string, Record<string, string>> = {
   // Hello & Greetings
@@ -589,15 +767,15 @@ export async function translateText(
   }
 
   // 5. Token-by-token composition from vocabulary for compound sentences
-  const words = trimmed.split(/\s+/);
+  const rawWords = trimmed.split(/\s+/);
   const targetLang = SUPPORTED_LANGUAGES.find(l => l.code === targetLangCode);
 
   let output = '';
 
   if (targetLangCode === 'sat' || targetLangCode === 'unr' || targetLangCode === 'hoc') {
-    // Check individual word matches in vocabulary & phrase map
-    const translatedWords = words.map(w => {
-      const wLower = w.toLowerCase().replace(/[^a-z0-9]/gi, '');
+    const translatedWords = rawWords.map(w => {
+      const cleanW = w.replace(/[?!.,;:()[\]{}|/•\\~`_+=<>]/g, '').trim();
+      const wLower = cleanW.toLowerCase();
       if (TRANSLATION_MAP[wLower] && TRANSLATION_MAP[wLower]['sat']) {
         return TRANSLATION_MAP[wLower]['sat'];
       }
@@ -615,46 +793,88 @@ export async function translateText(
       return wLower.split('').map(char => olChikiMap[char] || char).join('');
     });
 
-    output = translatedWords.join(' ') + ' ᱾';
+    output = translatedWords.filter(Boolean).join(' ') + ' ᱾';
     if (output.trim() === '᱾') output = 'ᱡᱚᱦᱟᱨ • ᱥᱟᱱᱛᱟᱲᱤ ᱛᱮ ᱛᱚᱨᱡᱚᱢᱟ ᱦᱩᱭ ᱮᱱᱟ ᱾';
   } else if (targetLangCode === 'hin') {
-    // Word by word Hindi lookup
-    const translatedHiWords = words.map(w => {
-      const wLower = w.toLowerCase().replace(/[^a-z0-9]/gi, '');
+    const translatedHiWords = rawWords.map(w => {
+      const cleanW = w.replace(/[?!.,;:()[\]{}|/•\\~`_+=<>]/g, '').trim();
+      const wLower = cleanW.toLowerCase();
+
+      // Check Santali (Ol Chiki/Roman) to Hindi direct grammar mapping
+      if (SANTALI_WORDS_TO_HI[cleanW] || SANTALI_WORDS_TO_HI[wLower]) {
+        return SANTALI_WORDS_TO_HI[cleanW] || SANTALI_WORDS_TO_HI[wLower];
+      }
+
       if (TRANSLATION_MAP[wLower] && TRANSLATION_MAP[wLower]['hin']) {
         return TRANSLATION_MAP[wLower]['hin'];
       }
-      const vocab = lookupWord(w, sourceLangCode);
+      const vocab = lookupWord(cleanW, sourceLangCode);
       if (vocab) return vocab.hi;
-      const santaliMatch = findSantaliMatch(wLower, 'eng') || findSantaliMatch(wLower, 'sat');
+
+      const santaliMatch = findSantaliMatch(cleanW, 'sat') || findSantaliMatch(wLower, 'eng');
       if (santaliMatch && santaliMatch.match) return santaliMatch.match.hi;
-      return w;
+
+      // If word is Ol Chiki proper noun/name, transliterate to Devanagari
+      if (/[\u1C50-\u1C7F]/.test(cleanW)) {
+        return transliterateOlChikiToDevanagari(cleanW);
+      }
+
+      return cleanW;
     });
-    output = translatedHiWords.join(' ');
+
+    output = translatedHiWords.filter(Boolean).join(' ');
+    // Handle SVO to SOV order if translating "My name is X"
+    if (output.includes('मेरा नाम') && output.includes('है') && output.endsWith('है')) {
+      // already good
+    }
   } else if (targetLangCode === 'eng') {
-    // Word by word English lookup
-    const translatedEnWords = words.map(w => {
-      const wLower = w.toLowerCase().replace(/[^a-z0-9]/gi, '');
+    const translatedEnWords = rawWords.map(w => {
+      const cleanW = w.replace(/[?!.,;:()[\]{}|/•\\~`_+=<>]/g, '').trim();
+      const wLower = cleanW.toLowerCase();
+
+      // Check Santali (Ol Chiki/Roman) to English direct grammar mapping
+      if (SANTALI_WORDS_TO_EN[cleanW] || SANTALI_WORDS_TO_EN[wLower]) {
+        return SANTALI_WORDS_TO_EN[cleanW] || SANTALI_WORDS_TO_EN[wLower];
+      }
+
       if (TRANSLATION_MAP[wLower] && TRANSLATION_MAP[wLower]['eng']) {
         return TRANSLATION_MAP[wLower]['eng'];
       }
-      const vocab = lookupWord(w, sourceLangCode);
+      const vocab = lookupWord(cleanW, sourceLangCode);
       if (vocab) return vocab.en;
-      const santaliMatch = findSantaliMatch(wLower, 'hin') || findSantaliMatch(wLower, 'sat');
+
+      const santaliMatch = findSantaliMatch(cleanW, 'sat') || findSantaliMatch(wLower, 'hin');
       if (santaliMatch && santaliMatch.match) return santaliMatch.match.en;
-      return w;
+
+      // If word is Ol Chiki proper noun/name (e.g. ᱵᱟᱵᱩᱞᱟᱞ -> Babulal), transliterate to Roman
+      if (/[\u1C50-\u1C7F]/.test(cleanW)) {
+        const roman = transliterateOlChikiToRoman(cleanW);
+        return roman.charAt(0).toUpperCase() + roman.slice(1);
+      }
+
+      return cleanW;
     });
-    output = translatedEnWords.join(' ');
+
+    const filtered = translatedEnWords.filter(Boolean);
+    // If pattern is ["My", "name", "Babulal", "is"] -> rearrange to "My name is Babulal."
+    if (filtered[0] === 'My' && filtered[1] === 'name' && filtered[filtered.length - 1] === 'is') {
+      const namePart = filtered.slice(2, filtered.length - 1).join(' ');
+      output = `My name is ${namePart}.`;
+    } else {
+      output = filtered.join(' ');
+      if (output && !output.endsWith('.')) output += '.';
+    }
   } else {
     // Other tribal languages (bhi, gon, kui, etc.)
-    const translatedTribalWords = words.map(w => {
-      const wLower = w.toLowerCase().replace(/[^a-z0-9]/gi, '');
+    const translatedTribalWords = rawWords.map(w => {
+      const cleanW = w.replace(/[?!.,;:()[\]{}|/•\\~`_+=<>]/g, '').trim();
+      const wLower = cleanW.toLowerCase();
       if (TRANSLATION_MAP[wLower] && TRANSLATION_MAP[wLower][targetLangCode]) {
         return TRANSLATION_MAP[wLower][targetLangCode];
       }
-      return w;
+      return cleanW;
     });
-    output = translatedTribalWords.join(' ');
+    output = translatedTribalWords.filter(Boolean).join(' ');
   }
 
   return {
@@ -663,7 +883,7 @@ export async function translateText(
     targetText: output,
     targetLang: targetLangCode,
     confidence: 0.93,
-    tokensCount: words.length
+    tokensCount: rawWords.length
   };
 }
 
