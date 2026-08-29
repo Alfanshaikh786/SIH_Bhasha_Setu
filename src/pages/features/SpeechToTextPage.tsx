@@ -3,8 +3,6 @@ import {
   Mic, 
   Square, 
   Upload, 
-  Play, 
-  Pause, 
   Copy, 
   Check, 
   Download, 
@@ -15,16 +13,12 @@ import {
   RotateCcw,
   Languages,
   ArrowRight,
-  Radio,
-  SlidersHorizontal,
-  Headphones,
-  CheckCircle2,
   Trash2,
   FileAudio,
   Activity,
   Info
 } from 'lucide-react';
-import { SUPPORTED_LANGUAGES, TribalLanguage } from '../../data/languages';
+import { SUPPORTED_LANGUAGES } from '../../data/languages';
 import { translateText, playTextSpeech } from '../../services/translationService';
 
 interface TranscribeSegment {
@@ -38,98 +32,8 @@ interface TranscribeSegment {
   confidence?: number;
 }
 
-interface SampleSpeech {
-  id: string;
-  title: string;
-  region: string;
-  language: string;
-  languageCode: string;
-  duration: string;
-  transcript: {
-    time: string;
-    speaker: string;
-    text: string;
-    translation: string;
-  }[];
-}
-
-const SAMPLE_SPEECHES: SampleSpeech[] = [
-  {
-    id: 'sample-snt-speech',
-    title: 'Santali Classroom & Health Address',
-    region: 'Mayurbhanj / East Singhbhum',
-    language: 'Santali (Ol Chiki)',
-    languageCode: 'sat',
-    duration: '0:42',
-    transcript: [
-      { 
-        time: '00:00 - 00:08', 
-        speaker: 'Teacher (Speaker 1)', 
-        text: 'ᱥᱟᱱᱟᱢ ᱠᱚ ᱡᱚᱦᱟᱨ! ᱛᱮᱦᱮᱧ ᱟᱵᱚ ᱥᱤᱠᱤᱞ ᱥᱮᱞ ᱵᱤᱰᱟᱹᱣ ᱤᱫᱤ ᱠᱟᱛᱮ ᱵᱚᱱ ᱜᱟᱞᱢᱟᱨᱟᱣᱟ᱾', 
-        translation: 'Greetings to everyone! Today we will discuss sickle cell screening and classroom health.' 
-      },
-      { 
-        time: '00:09 - 00:22', 
-        speaker: 'Community Leader (Speaker 2)', 
-        text: 'ᱦᱟᱥᱯᱟᱛᱟᱞ ᱨᱮ ᱵᱤᱱ ᱠᱩᱲᱟᱹᱭ ᱛᱮ ᱢᱟᱭᱟᱢ ᱵᱤᱰᱟᱹᱣ ᱦᱩᱭᱩᱜ ᱠᱟᱱᱟ᱾ ᱟᱯᱱᱟᱨ ᱦᱚᱲᱢᱚ ᱨᱮᱱᱟᱜ ᱡᱚᱛᱚᱱ ᱦᱟᱛᱟᱣ ᱢᱮ᱾', 
-        translation: 'Free blood screening is being provided at the hospital. Please take care of your health.' 
-      },
-      {
-        time: '00:23 - 00:42',
-        speaker: 'Teacher (Speaker 1)',
-        text: 'ᱤᱛᱩᱱ ᱟᱥᱲᱟ ᱨᱮ ᱡᱚᱛᱚ ᱯᱟᱹᱴᱷᱩᱣᱟᱹ ᱠᱚ ᱯᱩᱛᱷᱤ ᱟᱨ ᱠᱷᱟᱛᱟ ᱥᱟᱯᱲᱟᱣ ᱠᱟᱛᱮ ᱦᱤᱡᱩᱜ ᱢᱮ᱾',
-        translation: 'All students must come to school prepared with their books and notebooks.'
-      }
-    ]
-  },
-  {
-    id: 'sample-bhi-speech',
-    title: 'Bhili Village Council & Health Camp',
-    region: 'Jhabua / Banswara',
-    language: 'Bhili',
-    languageCode: 'bhi',
-    duration: '0:35',
-    transcript: [
-      { 
-        time: '00:00 - 00:10', 
-        speaker: 'Elder (Speaker 1)', 
-        text: 'हमारो गांव मां स्वास्थ्य शिविर लाग्यो छे।', 
-        translation: 'A free health camp is organized in our village today.' 
-      },
-      { 
-        time: '00:11 - 00:25', 
-        speaker: 'Health Worker (Speaker 2)', 
-        text: 'बधा भाइया-बेहना ने रगत नी जांच करवानी छे।', 
-        translation: 'All brothers and sisters should get their blood tested.' 
-      }
-    ]
-  },
-  {
-    id: 'sample-gon-speech',
-    title: 'Gondi Community Forest Council Speech',
-    region: 'Bastar / Dantewada',
-    language: 'Gondi',
-    languageCode: 'gon',
-    duration: '0:38',
-    transcript: [
-      { 
-        time: '00:00 - 00:12', 
-        speaker: 'Gram Mukhia (Speaker 1)', 
-        text: 'सेवा जोहार! सगा समाज तुन बड़ादेव पेन ना कृपा मंतू।', 
-        translation: 'Seva Johar! May the blessings of Badadev protect our indigenous community.' 
-      },
-      { 
-        time: '00:13 - 00:28', 
-        speaker: 'Teacher (Speaker 2)', 
-        text: 'मावा नाटो ते स्कूल अऊर अस्पताल बने मंता।', 
-        translation: 'Our village school and primary health center are operating well.' 
-      }
-    ]
-  }
-];
-
 export const SpeechToTextPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'mic' | 'upload' | 'samples'>('mic');
+  const [activeTab, setActiveTab] = useState<'mic' | 'upload'>('mic');
   const [sourceLang, setSourceLang] = useState('sat'); // Spoken dialect
   const [targetLang, setTargetLang] = useState('eng'); // Translation language
   const [isRecording, setIsRecording] = useState(false);
@@ -138,21 +42,9 @@ export const SpeechToTextPage: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [playingSegmentId, setPlayingSegmentId] = useState<string | null>(null);
-  const [playingSampleId, setPlayingSampleId] = useState<string | null>(null);
 
-  // Initialize transcript segments from sample 1
-  const [transcripts, setTranscripts] = useState<TranscribeSegment[]>(
-    SAMPLE_SPEECHES[0].transcript.map((t, idx) => ({
-      id: `seg-${idx + 1}`,
-      time: t.time,
-      speaker: t.speaker,
-      text: t.text,
-      translation: t.translation,
-      sourceLang: 'sat',
-      targetLang: 'eng',
-      confidence: 0.97
-    }))
-  );
+  // Initialize clean transcript segments
+  const [transcripts, setTranscripts] = useState<TranscribeSegment[]>([]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number | null>(null);
@@ -231,7 +123,7 @@ export const SpeechToTextPage: React.FC = () => {
 
     try {
       const recognition = new SpeechRecognitionClass();
-      // Select appropriate recognition model
+      // Select appropriate recognition language
       recognition.lang = sourceLang === 'eng' ? 'en-IN' : 'hi-IN';
       recognition.continuous = true;
       recognition.interimResults = true;
@@ -249,9 +141,9 @@ export const SpeechToTextPage: React.FC = () => {
               setIsProcessing(true);
               const trans = await translateText(spoken, sourceLang, targetLang);
               const newSegment: TranscribeSegment = {
-                id: `rec-${Date.now()}`,
+                id: `rec-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
                 time: `00:00 - 00:${recordingSeconds < 10 ? '0' + recordingSeconds : recordingSeconds}`,
-                speaker: 'Live Microphone',
+                speaker: 'Live Speaker',
                 text: spoken,
                 translation: trans.targetText,
                 sourceLang,
@@ -296,49 +188,13 @@ export const SpeechToTextPage: React.FC = () => {
     }
   };
 
-  // Play Sample Speech Audio and Sync Transcript
-  const handlePlaySample = async (sample: SampleSpeech) => {
-    if (playingSampleId === sample.id) {
-      setPlayingSampleId(null);
-      return;
-    }
-
-    setPlayingSampleId(sample.id);
-    setSourceLang(sample.languageCode);
-
-    // Translate and set segments
-    const newSegments: TranscribeSegment[] = [];
-    for (let i = 0; i < sample.transcript.length; i++) {
-      const item = sample.transcript[i];
-      const trans = await translateText(item.text, sample.languageCode, targetLang);
-      newSegments.push({
-        id: `sample-${sample.id}-${i}`,
-        time: item.time,
-        speaker: item.speaker,
-        text: item.text,
-        translation: trans.targetText || item.translation,
-        sourceLang: sample.languageCode,
-        targetLang,
-        confidence: 0.98
-      });
-    }
-    setTranscripts(newSegments);
-
-    // Speak the first segment text
-    if (sample.transcript[0]) {
-      playTextSpeech(sample.transcript[0].text, sample.languageCode, 0.9, () => {
-        setPlayingSampleId(null);
-      });
-    }
-  };
-
-  // Handle Mock Audio File Upload & Transcription
+  // Handle Audio File Upload & Transcription
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsProcessing(true);
-    // Simulate Neural ASR processing
+    // Simulate neural speech transcription
     await new Promise(r => setTimeout(r, 1200));
 
     const sampleSentences = [
@@ -458,7 +314,7 @@ export const SpeechToTextPage: React.FC = () => {
         {/* Main Studio Card */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           
-          {/* Top 3-Tab Mode Switcher */}
+          {/* Top 2-Tab Mode Switcher */}
           <div className="flex border-b border-slate-200 bg-slate-50/60 p-2 gap-2">
             <button
               onClick={() => setActiveTab('mic')}
@@ -481,19 +337,7 @@ export const SpeechToTextPage: React.FC = () => {
               }`}
             >
               <Upload className="w-4 h-4 text-[#249144]" />
-              <span>Upload Audio (MP3/WAV)</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('samples')}
-              className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                activeTab === 'samples'
-                  ? 'bg-white text-[#14532d] shadow-xs border border-slate-200/80 font-bold'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-              }`}
-            >
-              <Radio className="w-4 h-4 text-[#249144]" />
-              <span>Field Dialect Speeches</span>
+              <span>Upload Audio File (MP3/WAV)</span>
             </button>
           </div>
 
@@ -578,7 +422,7 @@ export const SpeechToTextPage: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-slate-800">
-                        Upload Field Audio File
+                        Upload Audio File
                       </p>
                       <p className="text-xs text-slate-500 mt-0.5">
                         Supports MP3, WAV, M4A, OGG up to 25MB
@@ -601,50 +445,13 @@ export const SpeechToTextPage: React.FC = () => {
                 </div>
               )}
 
-              {activeTab === 'samples' && (
-                <div className="space-y-3">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                    Select Dialect Field Recording:
-                  </p>
-                  <div className="grid gap-2.5">
-                    {SAMPLE_SPEECHES.map(s => (
-                      <div
-                        key={s.id}
-                        onClick={() => handlePlaySample(s)}
-                        className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
-                          playingSampleId === s.id 
-                            ? 'bg-emerald-50/80 border-[#249144] text-[#14532d] shadow-2xs' 
-                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-white hover:border-slate-300'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <button
-                            type="button"
-                            className="p-2 rounded-xl bg-white text-[#249144] shadow-2xs"
-                          >
-                            {playingSampleId === s.id ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
-                          </button>
-                          <div>
-                            <p className="text-xs font-bold text-slate-900">{s.title}</p>
-                            <p className="text-[11px] text-slate-500">{s.region} • {s.language}</p>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-mono text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded-md">
-                          {s.duration}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Instructions Note */}
               <div className="pt-4 border-t border-slate-100 text-[11px] text-slate-500 space-y-1">
                 <p className="font-semibold text-slate-700 flex items-center gap-1.5">
                   <Info className="w-3.5 h-3.5 text-[#249144]" /> How it works:
                 </p>
                 <p>
-                  1. Speak or play audio in the selected dialect ({sourceLangObj.name}).
+                  1. Speak or upload audio in the selected dialect ({sourceLangObj.name}).
                 </p>
                 <p>
                   2. ASR generates text in native script & translates it to {targetLangObj.name} with audio playback.
@@ -674,14 +481,16 @@ export const SpeechToTextPage: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleCopyAll}
-                      className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:border-[#249144] flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                      disabled={transcripts.length === 0}
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:border-[#249144] disabled:opacity-40 flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
                     >
                       {copied ? <Check className="w-3 h-3 text-[#249144]" /> : <Copy className="w-3 h-3" />}
                       <span>Copy All</span>
                     </button>
                     <button
                       onClick={handleDownloadSRT}
-                      className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:border-[#249144] flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                      disabled={transcripts.length === 0}
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:border-[#249144] disabled:opacity-40 flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
                     >
                       <Download className="w-3 h-3" />
                       <span>Export .SRT</span>
@@ -692,8 +501,12 @@ export const SpeechToTextPage: React.FC = () => {
                 {/* Segments Stream */}
                 <div className="space-y-3 max-h-[440px] overflow-y-auto pr-1">
                   {transcripts.length === 0 ? (
-                    <div className="py-16 text-center text-slate-400 text-xs bg-white rounded-2xl border border-dashed border-slate-200">
-                      No speech transcribed yet. Start speaking into your mic or choose a dialect sample.
+                    <div className="py-20 text-center text-slate-400 text-xs bg-white rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center space-y-2">
+                      <Mic className="w-8 h-8 text-slate-300" />
+                      <p className="font-semibold text-slate-600">No speech transcribed yet.</p>
+                      <p className="text-slate-400 text-[11px]">
+                        Tap the green mic button on the left to begin speaking in {sourceLangObj.name}.
+                      </p>
                     </div>
                   ) : (
                     transcripts.map((t) => (
@@ -768,12 +581,14 @@ export const SpeechToTextPage: React.FC = () => {
               {/* Footer Controls */}
               <div className="pt-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-400 mt-4">
                 <span>Sampling: 16 kHz • Neural Precision ASR</span>
-                <button
-                  onClick={() => setTranscripts([])}
-                  className="hover:text-red-500 flex items-center gap-1 cursor-pointer transition font-medium"
-                >
-                  <RotateCcw className="w-3 h-3" /> Clear all
-                </button>
+                {transcripts.length > 0 && (
+                  <button
+                    onClick={() => setTranscripts([])}
+                    className="hover:text-red-500 flex items-center gap-1 cursor-pointer transition font-medium"
+                  >
+                    <RotateCcw className="w-3 h-3" /> Clear all
+                  </button>
+                )}
               </div>
 
             </div>
