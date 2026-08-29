@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { SUPPORTED_LANGUAGES, TribalLanguage } from '../../data/languages';
 import { translateText, playTextSpeech } from '../../services/translationService';
+import { ClassroomDatabaseExplorer } from '../../components/common/ClassroomDatabaseExplorer';
 
 export const TextToTextPage: React.FC = () => {
   const [sourceLang, setSourceLang] = useState('eng');
@@ -474,6 +475,19 @@ export const TextToTextPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Local SQLite Database Explorer for Multilingual Classroom Dataset */}
+        <div className="mt-8">
+          <ClassroomDatabaseExplorer
+            onSelectSentence={(eng, sat) => {
+              setSourceLang('eng');
+              setTargetLang('sat');
+              setInputText(eng);
+              setOutputText(sat);
+              window.scrollTo({ top: 120, behavior: 'smooth' });
+            }}
+          />
+        </div>
 
         {/* Pre-loaded Sample Phrases */}
         <div className="mt-8">

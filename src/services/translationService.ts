@@ -1,6 +1,7 @@
 import { SUPPORTED_LANGUAGES } from '../data/languages';
 import { DICTIONARY_ENTRIES } from '../data/dictionaryData';
 import { findSantaliMatch, normalizeText, lookupWord, SANTALI_DATASET, CORE_VOCABULARY } from '../data/santaliDataset';
+import { queryTranslationFromDb } from './sqliteService';
 
 export interface TranslationResult {
   sourceText: string;
@@ -479,7 +480,25 @@ export async function translateText(
     }
   }
 
-  // 2. Direct dataset lookup from 6,780+ verified entries (English / Hindi / Santali Ol Chiki / Roman)
+  // 2. Local SQLite Database Query (translations.db - 6,780 Verified Classroom Entries)
+  try {
+    const dbMatch = await queryTranslationFromDb(trimmed, sourceLangCode, targetLangCode);
+    if (dbMatch && dbMatch.targetText) {
+      return {
+        sourceText: trimmed,
+        sourceLang: sourceLangCode,
+        targetText: dbMatch.targetText,
+        targetLang: targetLangCode,
+        transliteration: dbMatch.roman,
+        confidence: dbMatch.confidence,
+        tokensCount: trimmed.split(/\s+/).length
+      };
+    }
+  } catch (sqlErr) {
+    console.warn('SQLite query fallback:', sqlErr);
+  }
+
+  // 3. Direct dataset lookup from 6,780+ verified entries (English / Hindi / Santali Ol Chiki / Roman)
   const lookupLang = (sourceLangCode === 'hin' ? 'hin' : sourceLangCode === 'sat' || sourceLangCode === 'unr' || sourceLangCode === 'hoc' ? 'sat' : 'eng') as 'eng' | 'hin' | 'sat';
   const matchResult = findSantaliMatch(trimmed, lookupLang);
   if (matchResult && matchResult.match) {
