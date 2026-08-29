@@ -332,6 +332,110 @@ const TRANSLATION_MAP: Record<string, Record<string, string>> = {
     hin: 'यह क्या है?',
     eng: 'What is this?',
     bhi: 'ये काई छे?',
+  },
+  'cat': {
+    sat: 'ᱵᱤᱞᱟᱹᱭ (Bilae / Pusi)',
+    hin: 'बिल्ली (Billi)',
+    eng: 'Cat',
+    bhi: 'बिलाड़ी (Biladi)',
+    gon: 'वर्काल / पूसी (Varkal / Pusi)',
+    hoc: 'ᱵᱤᱞᱟᱹᱭ (Biloi)',
+    unr: 'ᱵᱤᱞᱟᱹᱭ (Bilae)',
+    kui: 'ବିରାଡି (Biradi)',
+    grt: 'Menggo',
+    trp: 'Menggong'
+  },
+  'dog': {
+    sat: 'ᱥᱮᱛᱟ (Seta)',
+    hin: 'कुत्ता (Kutta)',
+    eng: 'Dog',
+    bhi: 'कुतरो (Kutro)',
+    gon: 'नय (Nai)',
+    hoc: 'ᱥᱮᱛᱟ (Seta)',
+    unr: 'ᱥᱮᱛᱟ (Seta)',
+    kui: 'କୁକୁର (Kukura)',
+    grt: 'Achak',
+    trp: 'Waisa'
+  },
+  'cow': {
+    sat: 'ᱜᱟᱹᱭ (Gai)',
+    hin: 'गाय (Gaay)',
+    eng: 'Cow',
+    bhi: 'गाय',
+    gon: 'कोण्ड / गाय',
+    hoc: 'ᱜᱟᱹᱭ (Gai)',
+    unr: 'ᱜᱟᱹᱭ (Gai)'
+  },
+  'bird': {
+    sat: 'ᱪᱮᱬᱮ (Chene)',
+    hin: 'पक्षी / चिड़िया (Chidiya)',
+    eng: 'Bird',
+    bhi: 'पखेरू',
+    gon: 'पिट्टे (Pitte)',
+    hoc: 'ᱪᱮᱬᱮ (Chene)'
+  },
+  'tree': {
+    sat: 'ᱫᱟᱨᱮ (Dare)',
+    hin: 'पेड़ / वृक्ष (Ped)',
+    eng: 'Tree',
+    bhi: 'झाड़ (Jhad)',
+    gon: 'मर्रा (Marra)',
+    hoc: 'ᱫᱟᱨᱮ (Dare)'
+  },
+  'book': {
+    sat: 'ᱯᱩᱛᱷᱤ (Puthi)',
+    hin: 'किताब / पुस्तक (Kitab)',
+    eng: 'Book',
+    bhi: 'पोथी (Pothi)',
+    gon: 'पोथी / पुस्तक',
+    hoc: 'ᱯᱩᱛᱷᱤ (Puthi)'
+  },
+  'school': {
+    sat: 'ᱤᱛᱩᱱ ᱟᱥᱲᱟ (Itun Asra)',
+    hin: 'विद्यालय / स्कूल (School)',
+    eng: 'School',
+    bhi: 'निसड़ा (Nisda)',
+    gon: 'साला / स्कूल',
+    hoc: 'ᱤᱛᱩᱱ ᱟᱥᱲᱟ (Itun Asra)'
+  },
+  'teacher': {
+    sat: 'ᱢᱟᱪᱮᱛ (Machet)',
+    hin: 'शिक्षक / अध्यापक (Shikshak)',
+    eng: 'Teacher',
+    bhi: 'गुरुजी (Guruji)',
+    gon: 'मास्टर / गुरु',
+    hoc: 'ᱢᱟᱪᱮᱛ (Machet)'
+  },
+  'student': {
+    sat: 'ᱯᱟᱹᱴᱷᱩᱣᱟᱹ (Pathuwa)',
+    hin: 'छात्र / विद्यार्थी (Chhatra)',
+    eng: 'Student',
+    bhi: 'भणनार',
+    hoc: 'ᱯᱟᱹᱴᱷᱩᱣᱟᱹ (Pathuwa)'
+  },
+  'house': {
+    sat: 'ᱚᱲᱟᱜ (Orag)',
+    hin: 'घर / मकान (Ghar)',
+    eng: 'House',
+    bhi: 'घेर (Ghar)',
+    gon: 'रोन (Ron)',
+    hoc: 'ᱚᱲᱟᱜ (Owa)'
+  },
+  'sun': {
+    sat: 'ᱵᱮᱲᱟ / ᱥᱤᱧ (Beda / Sinj)',
+    hin: 'सूर्य / सूरज (Suraj)',
+    eng: 'Sun',
+    bhi: 'सूरज',
+    gon: 'पोद्दु (Poddu)',
+    hoc: 'ᱥᱤᱝᱜᱤ (Singi)'
+  },
+  'moon': {
+    sat: 'ᱪᱟᱸᱫᱚ (Chando)',
+    hin: 'चाँद / चंद्रमा (Chand)',
+    eng: 'Moon',
+    bhi: 'चांदो',
+    gon: 'नेला (Nela)',
+    hoc: 'ᱪᱟᱸᱫᱩ (Chandu)'
   }
 };
 
