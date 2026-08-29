@@ -357,21 +357,6 @@ export const Navbar: React.FC = () => {
                         </div>
                       </Link>
 
-                      {/* Worksheets */}
-                      <Link
-                        to="/features/learning-studio?tab=worksheets"
-                        onClick={() => setActiveDropdown(null)}
-                        className="flex items-center gap-3.5 p-3.5 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition group bg-white shadow-xs"
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-emerald-50 text-[#249144] flex items-center justify-center flex-shrink-0 group-hover:bg-[#249144] group-hover:text-white transition">
-                          <FileSpreadsheet className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d]">Worksheet Generator</p>
-                          <p className="text-xs text-slate-500 mt-0.5">Solve live or export printable A4</p>
-                        </div>
-                      </Link>
-
                       {/* Quiz and Assessment */}
                       <Link
                         to="/features/learning-studio?tab=assessment"
