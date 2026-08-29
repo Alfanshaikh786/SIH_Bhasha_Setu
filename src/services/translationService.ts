@@ -653,7 +653,10 @@ export async function translateText(
  * Optimized for Mobile (iOS Safari & Android Chrome) + Desktop with automatic fallback.
  */
 export function playTextSpeech(text: string, langCode: string, customRate: number = 0.9, onEnd?: () => void) {
-  if (!text || !text.trim()) return;
+  if (!text || !text.trim()) {
+    onEnd?.();
+    return;
+  }
 
   const rawText = text.trim();
 
@@ -662,7 +665,7 @@ export function playTextSpeech(text: string, langCode: string, customRate: numbe
   const parenMatch = rawText.match(/\(([^)]+)\)/);
   const hasOlChiki = /[\u1C50-\u1C7F]/.test(rawText);
 
-  if (parenMatch && parenMatch[1]) {
+  if (parenMatch && parenMatch[1] && (langCode === 'sat' || langCode === 'unr' || langCode === 'hoc')) {
     textToSpeak = parenMatch[1]; // Use clean Romanized pronunciation e.g. "Johar", "Nui do gai kanay"
   } else if (hasOlChiki || langCode === 'sat' || langCode === 'unr' || langCode === 'hoc') {
     const cleanSat = rawText.replace(/[᱾᱿•()]/g, '').trim();
@@ -691,71 +694,30 @@ export function playTextSpeech(text: string, langCode: string, customRate: numbe
     }
   }
 
-  // Clean any remaining special punctuation
+  // Clean any remaining special punctuation or symbols
   textToSpeak = textToSpeak.replace(/[᱾᱿•/]/g, '').trim();
-  if (!textToSpeak) textToSpeak = 'Johar';
-
-  // Determine language code for TTS
-  let ttsLang = 'hi';
-  if (langCode === 'eng') ttsLang = 'en';
-  else if (langCode === 'ben') ttsLang = 'bn';
-  else if (langCode === 'tel') ttsLang = 'te';
-  else if (langCode === 'ori') ttsLang = 'or';
-  else ttsLang = 'hi'; // Indian phonetics works best for tribal Romanized/Devanagari text
-
-  // Helper: Play via HTML5 Audio (Guaranteed to work on all mobile browsers)
-  const playViaAudioFallback = () => {
-    try {
-      if ((window as any).__ttsAudio) {
-        (window as any).__ttsAudio.pause();
-        (window as any).__ttsAudio = null;
-      }
-
-      const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(textToSpeak)}&tl=${ttsLang}&client=tw-ob`;
-      const audio = new Audio(audioUrl);
-      (window as any).__ttsAudio = audio;
-      
-      audio.onended = () => {
-        onEnd?.();
-        (window as any).__ttsAudio = null;
-      };
-      audio.onerror = () => {
-        onEnd?.();
-        (window as any).__ttsAudio = null;
-      };
-
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch((e) => {
-          console.warn('Audio fallback play caught:', e);
-          onEnd?.();
-        });
-      }
-    } catch (audioErr) {
-      console.warn('HTML5 Audio fallback error:', audioErr);
-      onEnd?.();
-    }
-  };
+  if (!textToSpeak) textToSpeak = rawText;
 
   // Check if Web Speech API is supported
   if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
-    playViaAudioFallback();
+    console.warn('Web Speech Synthesis not supported in this environment');
+    onEnd?.();
     return;
   }
 
   try {
-    // Unpause speech engine immediately on mobile user gesture
+    // Cancel any currently playing speech to start new utterance cleanly
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+      window.speechSynthesis.cancel();
+    }
+
     if (window.speechSynthesis.paused) {
       window.speechSynthesis.resume();
     }
 
-    // Cancel any previous hung speech
-    window.speechSynthesis.cancel();
-
     const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    let speechStarted = false;
 
-    // Retain global reference to prevent Chromium/WebKit garbage-collection cutoffs
+    // Keep global reference to prevent garbage collection on Chrome/Safari
     if (!(window as any).__activeUtterances) {
       (window as any).__activeUtterances = [];
     }
@@ -764,32 +726,51 @@ export function playTextSpeech(text: string, langCode: string, customRate: numbe
     // Get available voices
     const voices = window.speechSynthesis.getVoices() || [];
     
-    if (ttsLang === 'hi' || langCode === 'sat' || langCode === 'unr' || langCode === 'hoc' || langCode === 'hin') {
-      const indianVoice = voices.find(v => 
-        v.lang === 'hi-IN' || 
-        v.lang.startsWith('hi') || 
-        v.lang === 'en-IN' || 
-        v.name.toLowerCase().includes('india') ||
-        v.name.toLowerCase().includes('hindi')
-      );
-      if (indianVoice) utterance.voice = indianVoice;
-      utterance.lang = indianVoice ? indianVoice.lang : 'hi-IN';
-      utterance.rate = customRate || 0.88;
-      utterance.pitch = 1.0;
-    } else if (langCode === 'eng') {
-      const engVoice = voices.find(v => v.lang === 'en-IN' || v.lang.startsWith('en'));
-      if (engVoice) utterance.voice = engVoice;
-      utterance.lang = 'en-IN';
+    if (langCode === 'eng') {
+      // Find English voice (prefer en-IN, then en-US, en-GB, or any en voice)
+      const engVoice = voices.find(v => v.lang === 'en-IN') || 
+                       voices.find(v => v.lang.startsWith('en')) || 
+                       voices[0];
+      if (engVoice) {
+        utterance.voice = engVoice;
+        utterance.lang = engVoice.lang;
+      } else {
+        utterance.lang = 'en-US';
+      }
       utterance.rate = customRate || 0.95;
       utterance.pitch = 1.0;
-    } else {
-      utterance.lang = 'hi-IN';
+    } else if (langCode === 'hin') {
+      // Find Hindi voice
+      const hiVoice = voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi')) || 
+                      voices.find(v => v.lang === 'en-IN') || 
+                      voices[0];
+      if (hiVoice) {
+        utterance.voice = hiVoice;
+        utterance.lang = hiVoice.lang;
+      } else {
+        utterance.lang = 'hi-IN';
+      }
       utterance.rate = customRate || 0.9;
+      utterance.pitch = 1.0;
+    } else if (langCode === 'ben') {
+      const bnVoice = voices.find(v => v.lang.startsWith('bn')) || voices[0];
+      if (bnVoice) utterance.voice = bnVoice;
+      utterance.lang = 'bn-IN';
+      utterance.rate = customRate || 0.9;
+    } else {
+      // Tribal / Romanized phonetics: use Hindi or Indian English voice
+      const indianVoice = voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi')) || 
+                          voices.find(v => v.lang === 'en-IN') || 
+                          voices[0];
+      if (indianVoice) {
+        utterance.voice = indianVoice;
+        utterance.lang = indianVoice.lang;
+      } else {
+        utterance.lang = 'hi-IN';
+      }
+      utterance.rate = customRate || 0.88;
+      utterance.pitch = 1.0;
     }
-
-    utterance.onstart = () => {
-      speechStarted = true;
-    };
 
     utterance.onend = () => {
       onEnd?.();
@@ -801,41 +782,21 @@ export function playTextSpeech(text: string, langCode: string, customRate: numbe
     };
 
     utterance.onerror = (e) => {
-      console.warn('Speech synthesis error, trying audio fallback:', e);
+      console.warn('Speech synthesis playback ended:', e);
+      onEnd?.();
       const arr = (window as any).__activeUtterances;
       if (arr) {
         const idx = arr.indexOf(utterance);
         if (idx !== -1) arr.splice(idx, 1);
       }
-      // If native TTS failed on mobile, trigger audio fallback
-      if (!speechStarted) {
-        playViaAudioFallback();
-      } else {
-        onEnd?.();
-      }
     };
 
-    // Mobile fallback watchdog: If speech does not start in 350ms (common on iOS Safari / Android Chrome when backgrounded), switch to audio fallback
-    const watchdog = setTimeout(() => {
-      if (!speechStarted) {
-        console.info('Mobile TTS watchdog triggered, falling back to audio stream');
-        try { window.speechSynthesis.cancel(); } catch (_) {}
-        playViaAudioFallback();
-      }
-    }, 400);
-
-    const originalOnStart = utterance.onstart;
-    utterance.onstart = (ev) => {
-      clearTimeout(watchdog);
-      if (originalOnStart) (originalOnStart as any)(ev);
-    };
-
-    // Synchronous execution within the user gesture handler
+    // Execute speech synthesis
     window.speechSynthesis.resume();
     window.speechSynthesis.speak(utterance);
   } catch (err) {
-    console.warn('Speech synthesis exception, falling back to audio:', err);
-    playViaAudioFallback();
+    console.warn('Speech synthesis exception:', err);
+    onEnd?.();
   }
 }
 
