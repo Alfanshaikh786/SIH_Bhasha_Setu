@@ -68,7 +68,7 @@ export const TextToTextPage: React.FC = () => {
     ]);
   };
 
-  const handleToggleMic = () => {
+  const handleToggleMic = async () => {
     if (isListening) {
       if (recognitionRef.current) {
         try { recognitionRef.current.stop(); } catch {}
@@ -86,25 +86,41 @@ export const TextToTextPage: React.FC = () => {
       return;
     }
 
+    // Request microphone access first to prevent instant drop
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+    } catch (e) {
+      console.warn('Microphone permission not granted:', e);
+      setSpeechStatus('Microphone blocked. Please allow mic in browser settings.');
+      setIsListening(false);
+      return;
+    }
+
     try {
       const recognition = new SpeechRecognitionClass();
       recognition.lang = sourceLang === 'eng' ? 'en-IN' : (sourceLang === 'hin' || sourceLang === 'sat' || sourceLang === 'bhi' || sourceLang === 'gon' ? 'hi-IN' : 'en-IN');
-      recognition.continuous = false;
+      recognition.continuous = true;
       recognition.interimResults = true;
 
       setIsListening(true);
-      setSpeechStatus(`Listening in ${sourceLangObj.name}... Speak into your mic.`);
+      setSpeechStatus(`Listening in ${sourceLangObj.name}... Speak now (tap mic to stop).`);
 
       let spokenAccum = '';
 
       recognition.onresult = (event: any) => {
         let interim = '';
+        let finalChunk = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
-            spokenAccum += event.results[i][0].transcript;
+            finalChunk += event.results[i][0].transcript;
           } else {
             interim += event.results[i][0].transcript;
           }
+        }
+        if (finalChunk) {
+          spokenAccum = (spokenAccum + ' ' + finalChunk).trim();
         }
         const current = (spokenAccum || interim).trim();
         if (current) {
@@ -113,9 +129,11 @@ export const TextToTextPage: React.FC = () => {
       };
 
       recognition.onerror = (event: any) => {
-        console.warn('Speech recognition error in TextToText:', event.error);
-        setIsListening(false);
-        setSpeechStatus(null);
+        console.warn('Speech recognition event in TextToText:', event.error);
+        if (event.error !== 'no-speech') {
+          setIsListening(false);
+          setSpeechStatus(null);
+        }
       };
 
       recognition.onend = async () => {

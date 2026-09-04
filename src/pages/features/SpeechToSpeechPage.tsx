@@ -106,6 +106,9 @@ export const SpeechToSpeechPage: React.FC = () => {
 
   const recognitionRef = useRef<any>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const isListeningRef = useRef<boolean>(false);
+  const spokenTextRef = useRef<string>('');
+  const timeoutRef = useRef<any>(null);
 
   const langAObj = SUPPORTED_LANGUAGES.find(l => l.code === langA) || SUPPORTED_LANGUAGES[SUPPORTED_LANGUAGES.length - 1];
   const langBObj = SUPPORTED_LANGUAGES.find(l => l.code === langB) || SUPPORTED_LANGUAGES[0];
@@ -113,6 +116,17 @@ export const SpeechToSpeechPage: React.FC = () => {
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, liveTranscript]);
+
+  // Clean up timers and speech recognition on unmount
+  useEffect(() => {
+    return () => {
+      isListeningRef.current = false;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch {}
+      }
+    };
+  }, []);
 
   const getRecognitionLang = (code: string) => {
     switch (code) {
@@ -172,7 +186,7 @@ export const SpeechToSpeechPage: React.FC = () => {
     }
   };
 
-  const handleStartListening = (speaker: 'speakerA' | 'speakerB') => {
+  const handleStartListening = async (speaker: 'speakerA' | 'speakerB') => {
     const win = window as unknown as IWindow;
     const SpeechRecognitionClass = win.SpeechRecognition || win.webkitSpeechRecognition;
 
@@ -182,7 +196,9 @@ export const SpeechToSpeechPage: React.FC = () => {
 
     setActiveSpeaker(speaker);
     setLiveTranscript('');
-    setStatusMessage(`Listening to ${sourceLangName}... Speak now.`);
+    setStatusMessage(`Listening to ${sourceLangName}... Speak now (Tap mic again to Finish).`);
+    isListeningRef.current = true;
+    spokenTextRef.current = '';
 
     if (!SpeechRecognitionClass) {
       const fallbackPrompt = isA 
@@ -194,67 +210,124 @@ export const SpeechToSpeechPage: React.FC = () => {
       } else {
         setActiveSpeaker(null);
         setStatusMessage(null);
+        isListeningRef.current = false;
       }
+      return;
+    }
+
+    // Explicitly request mic permission so browser does not block speech recognition
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+    } catch (permErr) {
+      console.warn('Microphone permission not granted:', permErr);
+      setStatusMessage('Microphone blocked. Please click the mic icon in your address bar to allow.');
+      setActiveSpeaker(null);
+      isListeningRef.current = false;
       return;
     }
 
     try {
       if (recognitionRef.current) {
-        recognitionRef.current.abort();
+        try { recognitionRef.current.abort(); } catch {}
       }
 
       const recognition = new SpeechRecognitionClass();
       recognition.lang = getRecognitionLang(sourceCode);
-      recognition.continuous = false;
+      recognition.continuous = true;
       recognition.interimResults = true;
       recognition.maxAlternatives = 1;
 
-      let finalSpokenText = '';
-
       recognition.onresult = (event: any) => {
         let interim = '';
+        let finalChunk = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const trans = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            finalSpokenText += event.results[i][0].transcript;
+            finalChunk += trans;
           } else {
-            interim += event.results[i][0].transcript;
+            interim += trans;
           }
         }
-        setLiveTranscript(finalSpokenText || interim);
+        const accumulated = (spokenTextRef.current + ' ' + finalChunk).trim();
+        if (finalChunk) {
+          spokenTextRef.current = accumulated;
+        }
+        setLiveTranscript(accumulated || interim || spokenTextRef.current);
       };
 
       recognition.onerror = (event: any) => {
-        console.warn('Speech recognition error:', event.error);
-        if (event.error === 'not-allowed') {
-          setStatusMessage('Microphone permission blocked. Please allow mic or use text input.');
+        console.warn('Speech recognition event note:', event.error);
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          setStatusMessage('Microphone permission blocked. Please allow mic in browser settings.');
+          setActiveSpeaker(null);
+          isListeningRef.current = false;
+        } else if (event.error === 'network') {
+          setStatusMessage('Browser speech network timeout. Use quick phrases or type below.');
+          setActiveSpeaker(null);
+          isListeningRef.current = false;
         } else if (event.error === 'no-speech') {
-          setStatusMessage('No speech detected. Please speak closer to the mic.');
-        } else {
-          setStatusMessage(`Speech note: ${event.error}`);
+          // Do not cancel on no-speech when continuous is enabled; user is still thinking
+          setStatusMessage(`Listening to ${sourceLangName}... Speak now.`);
         }
       };
 
       recognition.onend = () => {
-        if (finalSpokenText.trim()) {
-          processAndAddMessage(speaker, finalSpokenText);
+        // If still in listening state (e.g. Chrome silent pause), automatically restart
+        if (isListeningRef.current) {
+          try {
+            recognition.start();
+          } catch {
+            const textToProcess = spokenTextRef.current.trim();
+            if (textToProcess) {
+              processAndAddMessage(speaker, textToProcess);
+            } else {
+              setActiveSpeaker(null);
+              setStatusMessage(null);
+            }
+            isListeningRef.current = false;
+          }
         } else {
-          setActiveSpeaker(null);
-          setStatusMessage(null);
+          // User finished speaking / tapped to stop
+          const textToProcess = spokenTextRef.current.trim();
+          if (textToProcess) {
+            processAndAddMessage(speaker, textToProcess);
+          } else {
+            setActiveSpeaker(null);
+            setStatusMessage(null);
+          }
         }
       };
 
       recognitionRef.current = recognition;
       recognition.start();
+
+      // Auto-stop safety timeout after 25 seconds of continuous listening
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        if (isListeningRef.current) {
+          handleStopListening();
+        }
+      }, 25000);
+
     } catch (e) {
       console.warn('Failed to start speech recognition:', e);
       setActiveSpeaker(null);
+      isListeningRef.current = false;
       setStatusMessage('Microphone access issue. You can click any quick sentence below.');
     }
   };
 
   const handleStopListening = () => {
+    isListeningRef.current = false;
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        console.warn('Error stopping recognition:', e);
+      }
     }
   };
 
