@@ -1,15 +1,10 @@
 // Bhasha Setu Progressive Web App (PWA) Service Worker
-const CACHE_NAME = 'bhasha-setu-pwa-v2';
+const CACHE_NAME = 'bhasha-setu-pwa-v1';
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/favicon.svg',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/icon-maskable-192.png',
-  '/icon-maskable-512.png',
-  '/apple-touch-icon.png',
   '/manifest.json'
 ];
 
