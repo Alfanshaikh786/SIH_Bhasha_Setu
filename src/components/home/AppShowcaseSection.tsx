@@ -58,7 +58,7 @@ export const AppShowcaseSection: React.FC = () => {
                 </div>
               </div>
 
-              {/* Phone 2: AdiVaani Voice with Equalizer Waveform */}
+              {/* Phone 2: Bhasha Setu Voice with Equalizer Waveform */}
               <div className="relative z-10 w-44 h-84 bg-slate-950 rounded-[34px] p-2.5 shadow-2xl border-[3px] border-slate-800 flex flex-col justify-between rotate-6 hover:rotate-0 transition-transform duration-500 -ml-8 mt-6">
                 {/* Notch */}
                 <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-3 bg-black rounded-full z-30 flex items-center justify-center">

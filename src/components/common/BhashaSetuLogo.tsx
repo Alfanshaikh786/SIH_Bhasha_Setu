@@ -85,6 +85,4 @@ export const BhashaSetuLogo: React.FC<BhashaSetuLogoProps> = ({
   );
 };
 
-// Aliases for compatibility
-export const AdiVaaniLogo = BhashaSetuLogo;
 export default BhashaSetuLogo;

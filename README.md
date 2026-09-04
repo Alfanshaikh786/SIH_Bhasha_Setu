@@ -32,7 +32,7 @@
 - Searchable database of **6,780+ curated tribal words & phrases** with IPA phonetics, parts of speech, and classroom context examples.
 - Community contribution portal for linguists and native speakers.
 
-### 6. 📴 Offline Mode (Adi Karmayogi)
+### 6. 📴 Offline Mode (Offline-First Ready)
 - Full-featured offline operation using cached datasets and on-device Web Speech & Regex phonetic models.
 - Interactive offline status HUD and toggle.
 
