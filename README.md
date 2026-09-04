@@ -110,6 +110,5 @@ SIH/
 Developed for the **Smart India Hackathon (SIH)**.
 
 - **Alfan Shaikh** ([@Alfanshaikh786](https://github.com/Alfanshaikh786))
-- **Amarnath Singh** ([@amarnathsingh72](https://github.com/amarnathsingh72))
 
 - **Institution**: Sahyadri College of Engineering and Management, Mangaluru

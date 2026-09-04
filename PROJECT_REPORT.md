@@ -613,5 +613,5 @@ python -m uvicorn server.main:app --host 0.0.0.0 --port 5000 --reload
 
 > **Report Compiled By**: Antigravity AI Engine  
 > **Repository**: [https://github.com/Alfanshaikh786/SIH_Bhasha_Setu](https://github.com/Alfanshaikh786/SIH_Bhasha_Setu)  
-> **Project Lead**: Alfan Shaikh & Amarnath Singh  
+> **Project Lead**: Alfan Shaikh  
 > **Institution**: Sahyadri College of Engineering and Management, Mangaluru
