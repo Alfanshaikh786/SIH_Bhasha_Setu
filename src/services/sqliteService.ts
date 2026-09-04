@@ -45,7 +45,12 @@ export async function getSqliteDatabase(): Promise<Database | null> {
     try {
       // 1. Initialize WebAssembly SQL.js engine
       const SQL: SqlJsStatic = await initSqlJs({
-        locateFile: (file) => `/${file}`
+        locateFile: (file) => {
+          if (file.endsWith('.wasm')) {
+            return '/sql-wasm.wasm';
+          }
+          return `/${file}`;
+        }
       });
 
       // 2. Fetch bundled translations.db as ArrayBuffer (Cached for 100% offline access)
@@ -76,6 +81,7 @@ export async function getSqliteDatabase(): Promise<Database | null> {
       return db;
     } catch (err: any) {
       console.error('Error initializing SQLite database:', err);
+      sqlPromise = null; // allow retry
       cachedStats = {
         isReady: false,
         totalRows: 0,
@@ -92,8 +98,51 @@ export async function getSqliteDatabase(): Promise<Database | null> {
 /**
  * Get current SQLite Database stats
  */
+export const BACKEND_API_URL = 'http://127.0.0.1:5000/api';
+export const USE_POSTGRES_BACKEND = true;
+
+// Initial background sync with local PostgreSQL backend
+if (typeof window !== 'undefined' && USE_POSTGRES_BACKEND) {
+  fetch(`${BACKEND_API_URL}/stats`)
+    .then(res => res.ok ? res.json() : null)
+    .then(stats => {
+      if (stats && stats.isReady) {
+        cachedStats = {
+          isReady: true,
+          totalRows: stats.totalRows || 6780,
+          categoriesCount: stats.categoriesCount || 13,
+          loadError: null
+        };
+      }
+    })
+    .catch(() => {});
+}
+
+/**
+ * Get current SQLite / PostgreSQL Database stats
+ */
 export function getSqliteStats(): SqliteStats {
   return cachedStats;
+}
+
+/**
+ * Fast helper to query the local offline PostgreSQL backend with automatic silent fallback
+ */
+async function fetchFromBackend<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
+  if (!USE_POSTGRES_BACKEND) return null;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1200);
+    const res = await fetch(`${BACKEND_API_URL}${endpoint}`, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null; // Transparent fallback to SQLite WASM
+  }
 }
 
 /**
@@ -121,6 +170,30 @@ export async function queryTranslationFromDb(
   const clean = text.trim();
   if (!clean) return null;
 
+  // 1. Try local PostgreSQL backend first
+  if (USE_POSTGRES_BACKEND) {
+    const pgRes = await fetchFromBackend<{
+      target_text: string | null;
+      roman?: string;
+      confidence: number;
+      row?: TranslationRow;
+    }>('/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: clean, source_lang: sourceLang, target_lang: targetLang })
+    });
+
+    if (pgRes && pgRes.target_text) {
+      return {
+        targetText: pgRes.target_text,
+        roman: pgRes.roman,
+        row: pgRes.row,
+        confidence: pgRes.confidence
+      };
+    }
+  }
+
+  // 2. Fallback to in-browser WebAssembly SQLite Database
   const db = await getSqliteDatabase();
   if (!db) return null;
 
@@ -211,6 +284,20 @@ export async function searchClassroomSentences(
   category: string = 'All',
   limit: number = 30
 ): Promise<TranslationRow[]> {
+  // 1. Try local PostgreSQL backend first
+  if (USE_POSTGRES_BACKEND) {
+    const params = new URLSearchParams();
+    if (keyword) params.append('keyword', keyword);
+    if (category) params.append('category', category);
+    if (limit) params.append('limit', limit.toString());
+
+    const pgRows = await fetchFromBackend<TranslationRow[]>(`/search?${params.toString()}`);
+    if (pgRows && Array.isArray(pgRows) && pgRows.length > 0) {
+      return pgRows;
+    }
+  }
+
+  // 2. Fallback to in-memory WebAssembly SQLite Database
   const db = await getSqliteDatabase();
   if (!db) return [];
 
@@ -267,6 +354,15 @@ export async function searchClassroomSentences(
  * Get distinct classroom categories and their row counts
  */
 export async function getClassroomCategories(): Promise<{ category: string; count: number }[]> {
+  // 1. Try local PostgreSQL backend first
+  if (USE_POSTGRES_BACKEND) {
+    const pgCats = await fetchFromBackend<{ category: string; count: number }[]>('/categories');
+    if (pgCats && Array.isArray(pgCats) && pgCats.length > 0) {
+      return pgCats;
+    }
+  }
+
+  // 2. Fallback to in-memory WebAssembly SQLite Database
   const db = await getSqliteDatabase();
   if (!db) return [];
 

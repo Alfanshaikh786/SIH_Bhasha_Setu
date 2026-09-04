@@ -50,5 +50,11 @@ out/
 *.njsproj
 *.sln
 *.sw?
+thumbs.db
 .DS_Store
-Thumbs.db
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+

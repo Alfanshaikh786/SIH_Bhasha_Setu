@@ -124,12 +124,19 @@ async function buildDatabase() {
   fs.writeFileSync(publicDbPath, buffer);
   console.log(`🌐 Bundled for client-side offline access at ${publicDbPath}`);
 
-  // 3. Copy sql-wasm.wasm to public directory for zero-network WASM execution
+  // 3. Copy wasm binaries to public directory for zero-network WASM execution
   const wasmSrcPath = path.join(__dirname, '../node_modules/sql.js/dist/sql-wasm.wasm');
   const wasmDestPath = path.join(__dirname, '../public/sql-wasm.wasm');
   if (fs.existsSync(wasmSrcPath)) {
     fs.copyFileSync(wasmSrcPath, wasmDestPath);
     console.log(`⚡ Copied sql-wasm.wasm to ${wasmDestPath} for 100% offline WebAssembly`);
+  }
+
+  const browserWasmSrc = path.join(__dirname, '../node_modules/sql.js/dist/sql-wasm-browser.wasm');
+  const browserWasmDest = path.join(__dirname, '../public/sql-wasm-browser.wasm');
+  if (fs.existsSync(browserWasmSrc)) {
+    fs.copyFileSync(browserWasmSrc, browserWasmDest);
+    console.log(`⚡ Copied sql-wasm-browser.wasm to ${browserWasmDest}`);
   }
 
   console.log('🎉 SQLite Database generation completed successfully!');

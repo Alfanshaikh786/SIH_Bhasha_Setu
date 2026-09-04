@@ -887,9 +887,72 @@ export async function translateText(
   };
 }
 
+// Cached voice registry for cross-browser reliability
+let cachedVoicesList: SpeechSynthesisVoice[] = [];
+
+export function getAvailableVoices(): SpeechSynthesisVoice[] {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
+  const v = window.speechSynthesis.getVoices();
+  if (v && v.length > 0) {
+    cachedVoicesList = v;
+  }
+  return cachedVoicesList;
+}
+
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  getAvailableVoices();
+  window.speechSynthesis.onvoiceschanged = () => {
+    getAvailableVoices();
+  };
+}
+
+// Known common Santali Roman phrases
+const KNOWN_ROMAN_PHRASES: Record<string, string> = {
+  'ᱡᱚᱦᱟᱨ': 'Johar',
+  'ᱥᱟᱱᱛᱟᱲᱤ': 'Santali',
+  'ᱟᱢ ᱫᱚ ᱪᱮᱫ ᱞᱮᱠᱟ ᱢᱮᱱᱟᱜ-ᱟ?': 'Am do ched leka menag-a?',
+  'ᱟᱞᱮᱭᱟᱜ ᱟᱹᱛᱩ ᱨᱮ ᱟᱯᱮᱭᱟᱜ ᱥᱟᱹᱜᱩᱱ ᱫᱟᱨᱟᱢ᱾': 'Aleyag aatu re apeyag sagun daram',
+  'ᱟᱢᱟᱜ ᱧᱩᱛᱩᱢ ᱪᱮᱫ?': 'Amag nyutum ched?',
+  'ᱤᱧ ᱫᱚ ᱵᱮᱥ ᱜᱮ ᱢᱮᱱᱟᱹᱧᱟ᱾': 'Inj do bes ge menanya',
+  'ᱦᱟᱥᱯᱟᱛᱟᱞ ᱫᱚ ᱚᱠᱟᱨᱮ ᱢᱮᱱᱟᱜ-ᱟ?': 'Hospital do okare menag-a?',
+  'ᱥᱤᱠᱤᱞ ᱥᱮᱞ ᱢᱟᱭᱟᱢ ᱵᱤᱰᱟᱹᱣ': 'Sikil sel mayam bidaw',
+  'ᱥᱤᱠᱤᱞ ᱥᱮᱞ ᱵᱤᱰᱟᱹᱣ': 'Sikil sel bidaw',
+  'ᱥᱟᱹᱜᱩᱱ ᱫᱟᱨᱟᱢ': 'Sagun daram',
+  'ᱥᱟᱹᱜᱩᱱ ᱥᱮᱛᱟᱜ': 'Sagun setag',
+  'ᱥᱟᱹᱜᱩᱱ ᱧᱤᱫᱟᱹ': 'Sagun nyinda',
+  'ᱥᱟᱨᱦᱟᱣ': 'Sarhaw',
+  'ᱫᱟᱜ': 'Daag',
+  'ᱵᱤᱨ': 'Bir',
+  'ᱦᱮᱸ': 'Hen',
+  'ᱵᱟᱝ': 'Bang'
+};
+
+/**
+ * Transliterates Devanagari to Roman phonetics for systems lacking Hindi TTS
+ */
+function transliterateDevanagariToRoman(text: string): string {
+  const devToRoman: Record<string, string> = {
+    'अ': 'a', 'आ': 'aa', 'इ': 'i', 'ई': 'ee', 'उ': 'u', 'ऊ': 'oo', 'ऋ': 'ri', 'ए': 'e', 'ऐ': 'ai', 'ओ': 'o', 'औ': 'au',
+    'क': 'k', 'ख': 'kh', 'ग': 'g', 'घ': 'gh', 'ङ': 'ng',
+    'च': 'ch', 'छ': 'chh', 'ज': 'j', 'झ': 'jh', 'ञ': 'ny',
+    'ट': 't', 'ठ': 'th', 'ड': 'd', 'ढ': 'dh', 'ण': 'n',
+    'त': 't', 'थ': 'th', 'द': 'd', 'ध': 'dh', 'न': 'n',
+    'प': 'p', 'फ': 'ph', 'ब': 'b', 'भ': 'bh', 'म': 'm',
+    'य': 'ya', 'र': 'ra', 'ल': 'la', 'व': 'va', 'श': 'sha', 'ष': 'sha', 'स': 'sa', 'ह': 'ha',
+    'ा': 'aa', 'ि': 'i', 'ी': 'ee', 'ु': 'u', 'ू': 'oo', 'ृ': 'ri', 'े': 'e', 'ै': 'ai', 'ो': 'o', 'ौ': 'au',
+    'ं': 'n', 'ँ': 'n', '्': '', '।': '.', '॥': '.'
+  };
+  let result = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    result += devToRoman[ch] !== undefined ? devToRoman[ch] : ch;
+  }
+  return result;
+}
+
 /**
  * Text to Speech Synthesizer with verified Santali Roman pronunciations and multi-engine voice support.
- * Optimized for Mobile (iOS Safari & Android Chrome) + Desktop with automatic fallback.
+ * Optimized for Mobile (iOS Safari & Android Chrome) + Desktop with universal phonetic fallback.
  */
 export function playTextSpeech(text: string, langCode: string, customRate: number = 0.9, onEnd?: () => void) {
   if (!text || !text.trim()) {
@@ -903,138 +966,148 @@ export function playTextSpeech(text: string, langCode: string, customRate: numbe
   let textToSpeak = rawText;
   const parenMatch = rawText.match(/\(([^)]+)\)/);
   const hasOlChiki = /[\u1C50-\u1C7F]/.test(rawText);
+  const isTribal = (langCode === 'sat' || langCode === 'unr' || langCode === 'hoc');
 
-  if (parenMatch && parenMatch[1] && (langCode === 'sat' || langCode === 'unr' || langCode === 'hoc')) {
+  if (parenMatch && parenMatch[1] && isTribal) {
     textToSpeak = parenMatch[1]; // Use clean Romanized pronunciation e.g. "Johar", "Nui do gai kanay"
-  } else if (hasOlChiki || langCode === 'sat' || langCode === 'unr' || langCode === 'hoc') {
+  } else if (hasOlChiki || isTribal) {
     const cleanSat = rawText.replace(/[᱾᱿•()]/g, '').trim();
 
-    // Check direct match in updated 6,780+ dataset for official pronunciation
-    const datasetMatch = SANTALI_DATASET.find(d => 
-      d.sat.trim() === rawText ||
-      d.sat.replace(/[᱾᱿•]/g, '').trim() === cleanSat ||
-      d.en.toLowerCase() === rawText.toLowerCase() ||
-      d.hi === rawText
-    );
-
-    if (datasetMatch && datasetMatch.roman) {
-      textToSpeak = datasetMatch.roman;
+    if (KNOWN_ROMAN_PHRASES[cleanSat]) {
+      textToSpeak = KNOWN_ROMAN_PHRASES[cleanSat];
     } else {
-      const vocabMatch = CORE_VOCABULARY.find(v => 
-        v.sat.trim() === rawText ||
-        v.sat.replace(/[᱾᱿•]/g, '').trim() === cleanSat ||
-        v.en.toLowerCase() === rawText.toLowerCase()
+      // Check direct match in 6,780+ dataset for official pronunciation
+      const datasetMatch = SANTALI_DATASET.find(d => 
+        d.sat.trim() === rawText ||
+        d.sat.replace(/[᱾᱿•]/g, '').trim() === cleanSat ||
+        d.en.toLowerCase() === rawText.toLowerCase() ||
+        d.hi === rawText
       );
-      if (vocabMatch && vocabMatch.roman) {
-        textToSpeak = vocabMatch.roman;
-      } else if (hasOlChiki) {
-        textToSpeak = transliterateOlChikiToDevanagari(rawText);
+
+      if (datasetMatch && datasetMatch.roman) {
+        textToSpeak = datasetMatch.roman;
+      } else {
+        const vocabMatch = CORE_VOCABULARY.find(v => 
+          v.sat.trim() === rawText ||
+          v.sat.replace(/[᱾᱿•]/g, '').trim() === cleanSat ||
+          v.en.toLowerCase() === rawText.toLowerCase()
+        );
+        if (vocabMatch && vocabMatch.roman) {
+          textToSpeak = vocabMatch.roman;
+        } else if (hasOlChiki) {
+          // Fallback to Roman transliteration so all OS voices can pronounce it naturally
+          textToSpeak = transliterateOlChikiToRoman(rawText);
+        }
       }
     }
   }
 
-  // Clean any remaining special punctuation or symbols
-  textToSpeak = textToSpeak.replace(/[᱾᱿•/]/g, '').trim();
+  // Clean remaining special punctuation or symbols
+  textToSpeak = textToSpeak.replace(/[᱾᱿•/]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!textToSpeak) textToSpeak = rawText;
 
-  // Check if Web Speech API is supported
+  // Check Web Speech API support
   if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
-    console.warn('Web Speech Synthesis not supported in this environment');
+    console.warn('Web Speech Synthesis not supported; playing acoustic tone fallback');
+    playChimeTone();
     onEnd?.();
     return;
   }
 
   try {
-    // Cancel any currently playing speech to start new utterance cleanly
-    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-      window.speechSynthesis.cancel();
-    }
+    const voices = getAvailableVoices();
+    const hasHindiVoice = voices.some(v => v.lang.startsWith('hi'));
+    const hasIndianEngVoice = voices.some(v => v.lang === 'en-IN');
 
-    if (window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
+    // If text is Hindi but no Hindi voice exists on device, Romanize it so English voice can speak it!
+    if (langCode === 'hin' && !hasHindiVoice) {
+      textToSpeak = transliterateDevanagariToRoman(textToSpeak);
     }
 
     const utterance = new SpeechSynthesisUtterance(textToSpeak);
 
-    // Keep global reference to prevent garbage collection on Chrome/Safari
+    // Keep global reference to prevent garbage collection on Chromium/Safari
     if (!(window as any).__activeUtterances) {
       (window as any).__activeUtterances = [];
     }
     (window as any).__activeUtterances.push(utterance);
 
-    // Get available voices
-    const voices = window.speechSynthesis.getVoices() || [];
-    
+    // Select Voice & Language
+    let selectedVoice: SpeechSynthesisVoice | undefined;
+
     if (langCode === 'eng') {
-      // Find English voice (prefer en-IN, then en-US, en-GB, or any en voice)
-      const engVoice = voices.find(v => v.lang === 'en-IN') || 
-                       voices.find(v => v.lang.startsWith('en')) || 
-                       voices[0];
-      if (engVoice) {
-        utterance.voice = engVoice;
-        utterance.lang = engVoice.lang;
-      } else {
-        utterance.lang = 'en-US';
-      }
+      selectedVoice = voices.find(v => v.lang === 'en-IN') || 
+                      voices.find(v => v.lang.startsWith('en')) || 
+                      voices[0];
+      utterance.lang = selectedVoice ? selectedVoice.lang : 'en-US';
       utterance.rate = customRate || 0.95;
       utterance.pitch = 1.0;
-    } else if (langCode === 'hin') {
-      // Find Hindi voice
-      const hiVoice = voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi')) || 
-                      voices.find(v => v.lang === 'en-IN') || 
-                      voices[0];
-      if (hiVoice) {
-        utterance.voice = hiVoice;
-        utterance.lang = hiVoice.lang;
-      } else {
-        utterance.lang = 'hi-IN';
-      }
+    } else if (langCode === 'hin' && hasHindiVoice) {
+      selectedVoice = voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi'));
+      utterance.lang = selectedVoice ? selectedVoice.lang : 'hi-IN';
       utterance.rate = customRate || 0.9;
       utterance.pitch = 1.0;
     } else if (langCode === 'ben') {
-      const bnVoice = voices.find(v => v.lang.startsWith('bn')) || voices[0];
-      if (bnVoice) utterance.voice = bnVoice;
-      utterance.lang = 'bn-IN';
+      selectedVoice = voices.find(v => v.lang.startsWith('bn')) || voices[0];
+      utterance.lang = selectedVoice ? selectedVoice.lang : 'bn-IN';
       utterance.rate = customRate || 0.9;
     } else {
-      // Tribal / Romanized phonetics: use Hindi or Indian English voice
-      const indianVoice = voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi')) || 
-                          voices.find(v => v.lang === 'en-IN') || 
-                          voices[0];
-      if (indianVoice) {
-        utterance.voice = indianVoice;
-        utterance.lang = indianVoice.lang;
-      } else {
-        utterance.lang = 'hi-IN';
-      }
+      // Tribal / Romanized phonetics: prefer Indian English (natural accent) or Hindi or default
+      selectedVoice = voices.find(v => v.lang === 'en-IN') || 
+                      voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi')) || 
+                      voices.find(v => v.lang.startsWith('en')) || 
+                      voices[0];
+      // Match utterance language to selected voice to avoid Windows SAPI language discard
+      utterance.lang = selectedVoice ? selectedVoice.lang : 'en-US';
       utterance.rate = customRate || 0.88;
       utterance.pitch = 1.0;
     }
 
-    utterance.onend = () => {
-      onEnd?.();
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+    }
+
+    const cleanup = () => {
       const arr = (window as any).__activeUtterances;
       if (arr) {
         const idx = arr.indexOf(utterance);
         if (idx !== -1) arr.splice(idx, 1);
       }
+    };
+
+    utterance.onend = () => {
+      cleanup();
+      onEnd?.();
     };
 
     utterance.onerror = (e) => {
-      console.warn('Speech synthesis playback ended:', e);
+      console.warn('Speech synthesis utterance ended/interrupted:', e);
+      cleanup();
+      playChimeTone();
       onEnd?.();
-      const arr = (window as any).__activeUtterances;
-      if (arr) {
-        const idx = arr.indexOf(utterance);
-        if (idx !== -1) arr.splice(idx, 1);
-      }
     };
 
-    // Execute speech synthesis
-    window.speechSynthesis.resume();
-    window.speechSynthesis.speak(utterance);
+    // Cancel any previous utterances, then resume and speak after short delay to prevent Chromium cancel bug
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+      window.speechSynthesis.cancel();
+    }
+
+    setTimeout(() => {
+      try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+        window.speechSynthesis.speak(utterance);
+      } catch (innerErr) {
+        console.warn('SpeechSynthesis speak error:', innerErr);
+        playChimeTone();
+        onEnd?.();
+      }
+    }, 60);
+
   } catch (err) {
-    console.warn('Speech synthesis exception:', err);
+    console.warn('Speech synthesis exception, triggering acoustic feedback:', err);
+    playChimeTone();
     onEnd?.();
   }
 }
