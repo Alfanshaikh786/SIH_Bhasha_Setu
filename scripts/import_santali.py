@@ -13,7 +13,8 @@ import psycopg2
 from psycopg2 import sql
 
 # Ensure standard output supports UTF-8 on Windows
-sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')  # type: ignore
 
 # 1. Load environment variables
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -232,11 +233,13 @@ def run_validation():
 
     # 1. Total translation sets
     cur.execute("SELECT COUNT(*) FROM translation_sets;")
-    total_sets = cur.fetchone()[0]
+    r_sets = cur.fetchone()
+    total_sets = r_sets[0] if r_sets else 0
 
     # 2. Total translation texts
     cur.execute("SELECT COUNT(*) FROM translation_texts;")
-    total_texts = cur.fetchone()[0]
+    r_texts = cur.fetchone()
+    total_texts = r_texts[0] if r_texts else 0
 
     # 3. Counts per language
     cur.execute("""
@@ -250,7 +253,8 @@ def run_validation():
 
     # 4. Verified records
     cur.execute("SELECT COUNT(*) FROM translation_texts WHERE is_verified = TRUE;")
-    verified_texts = cur.fetchone()[0]
+    r_verified = cur.fetchone()
+    verified_texts = r_verified[0] if r_verified else 0
 
     # 5. Missing translations check (sets without English or Hindi or Santali)
     cur.execute("""
@@ -259,7 +263,8 @@ def run_validation():
            OR NOT EXISTS (SELECT 1 FROM translation_texts WHERE translation_set_id = ts.translation_set_id AND language_id = 2)
            OR NOT EXISTS (SELECT 1 FROM translation_texts WHERE translation_set_id = ts.translation_set_id AND language_id = 3);
     """)
-    missing_core = cur.fetchone()[0]
+    r_missing = cur.fetchone()
+    missing_core = r_missing[0] if r_missing else 0
 
     # 6. Duplicate check (sets with more than one text for same language)
     cur.execute("""

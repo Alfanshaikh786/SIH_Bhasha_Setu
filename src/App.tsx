@@ -14,10 +14,6 @@ import { TextToSpeechPage } from './pages/features/TextToSpeechPage';
 import { VideoSubtitlePage } from './pages/features/VideoSubtitlePage';
 import { LearningStudioPage } from './pages/features/LearningStudioPage';
 import { DictionaryPage } from './pages/resources/DictionaryPage';
-import { AdiKarmayogiPage } from './pages/resources/AdiKarmayogiPage';
-import { VVIPSpeechesPage } from './pages/gallery/VVIPSpeechesPage';
-import { SCDAwarenessPage } from './pages/gallery/SCDAwarenessPage';
-import { MediaGalleryPage } from './pages/gallery/MediaGalleryPage';
 import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
 import { VaaniStreamPage } from './pages/VaaniStreamPage';
@@ -47,13 +43,6 @@ export const App: React.FC = () => {
           <Route path="/resources/learning-studio" element={<LearningStudioPage />} />
           <Route path="/learning-studio" element={<LearningStudioPage />} />
           <Route path="/resources/dictionary" element={<DictionaryPage />} />
-          <Route path="/resources/adi-karmayogi" element={<AdiKarmayogiPage />} />
-          
-          {/* Gallery */}
-          <Route path="/gallery" element={<MediaGalleryPage />} />
-          <Route path="/gallery/vvip-speeches" element={<VVIPSpeechesPage />} />
-          <Route path="/gallery/scd-awareness" element={<SCDAwarenessPage />} />
-          <Route path="/gallery/media" element={<MediaGalleryPage />} />
           
           {/* Info & Support */}
           <Route path="/about-us" element={<AboutPage />} />

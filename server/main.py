@@ -16,7 +16,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Ensure UTF-8 output
-sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')  # type: ignore
 
 # Load environment
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -94,9 +95,11 @@ def health_check():
     try:
         cur = conn.cursor()
         cur.execute("SELECT COUNT(*) FROM translation_sets;")
-        total_sets = cur.fetchone()[0]
+        r_sets = cur.fetchone()
+        total_sets = r_sets[0] if r_sets else 0
         cur.execute("SELECT COUNT(*) FROM translation_texts;")
-        total_texts = cur.fetchone()[0]
+        r_texts = cur.fetchone()
+        total_texts = r_texts[0] if r_texts else 0
         cur.close()
         return {
             "status": "online",
@@ -116,10 +119,12 @@ def get_stats():
     try:
         cur = conn.cursor()
         cur.execute("SELECT COUNT(*) FROM translation_sets;")
-        total_rows = cur.fetchone()[0]
+        r_total = cur.fetchone()
+        total_rows = r_total[0] if r_total else 0
 
         cur.execute("SELECT COUNT(DISTINCT category_id) FROM translation_sets WHERE category_id IS NOT NULL;")
-        cat_count = cur.fetchone()[0]
+        r_cat = cur.fetchone()
+        cat_count = r_cat[0] if r_cat else 0
         cur.close()
 
         return {
@@ -191,7 +196,7 @@ def search_sentences(
             LEFT JOIN translation_texts unr ON unr.translation_set_id = ts.translation_set_id AND unr.language_id = 5
         """
         conditions = []
-        params = []
+        params: List[object] = []
 
         if clean_keyword:
             conditions.append("""(

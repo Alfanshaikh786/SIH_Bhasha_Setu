@@ -1,0 +1,24 @@
+# Pyrefly Configuration for Bhasha Setu
+python-interpreter-path = "D:/SIH/.venv/Scripts/python.exe"
+
+project-includes = [
+    "server/**/*.py",
+    "scripts/**/*.py"
+]
+
+project-excludes = [
+    "**/__pyrefly_virtual__/**",
+    "**/.venv/**",
+    "**/node_modules/**"
+]
+
+search-path = [
+    ".",
+    "server",
+    "scripts"
+]
+
+site-package-path = [
+    "D:/SIH/.venv/Lib/site-packages",
+    "C:/Users/alfan/AppData/Local/Python/pythoncore-3.14-64/Lib/site-packages"
+]
