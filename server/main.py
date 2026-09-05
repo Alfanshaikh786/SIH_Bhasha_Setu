@@ -62,12 +62,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Neural ASR Engine Router (Santali IndicConformer)
+# Neural ASR Engine Router (Santali IndicConformer + Faster-Whisper)
 try:
     from server.api.asr_routes import router as asr_api_router
     app.include_router(asr_api_router, prefix="/api/asr", tags=["Neural ASR"])
 except Exception as asr_err:
     print(f"⚠️ ASR router mount warning: {asr_err}")
+
+# Video Subtitle Engine Router
+try:
+    from server.api.video_routes import router as video_api_router
+    app.include_router(video_api_router, prefix="/api/video", tags=["Video Subtitles"])
+except Exception as video_err:
+    print(f"⚠️ Video Subtitles router mount warning: {video_err}")
 
 # Language code normalization
 LANG_MAP = {

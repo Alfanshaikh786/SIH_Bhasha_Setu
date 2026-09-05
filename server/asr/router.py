@@ -7,6 +7,7 @@ from typing import Dict, List, Optional
 import numpy as np
 from server.asr.base import ASREngine, ASRResult
 from server.asr.santali import SantaliIndicConformerASREngine
+from server.asr.whisper_engine import WhisperASREngine
 
 
 class ASRRouter:
@@ -17,8 +18,16 @@ class ASRRouter:
 
     def __init__(self):
         self._engines: Dict[str, ASREngine] = {}
-        # Register Santali Neural Engine
+        # Register Santali Neural Engine (IndicConformer)
         self.register_engine("sat", SantaliIndicConformerASREngine())
+
+        # Register Hindi / English / Auto Engine (Faster-Whisper)
+        whisper_engine = WhisperASREngine(model_size="tiny", device="cpu", compute_type="int8")
+        self.register_engine("hin", whisper_engine)
+        self.register_engine("hi", whisper_engine)
+        self.register_engine("eng", whisper_engine)
+        self.register_engine("en", whisper_engine)
+        self.register_engine("auto", whisper_engine)
 
     def register_engine(self, lang_code: str, engine: ASREngine):
         self._engines[lang_code.lower()] = engine
