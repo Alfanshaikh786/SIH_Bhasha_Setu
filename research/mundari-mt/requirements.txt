@@ -1,0 +1,16 @@
+# Mundari Machine Translation Research Pipeline Dependencies
+# Minimal, lightweight core requirements for research & baseline evaluation
+
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+rapidfuzz>=3.0.0
+sacrebleu>=2.4.0
+
+# Optional dependencies for neural model exploration (Dry-Run / Evaluation)
+# Uncomment only when running on GPU compute nodes:
+# torch>=2.2.0
+# transformers>=4.40.0
+# peft>=0.10.0
+# sentencepiece>=0.1.99
+# bitsandbytes>=0.43.0

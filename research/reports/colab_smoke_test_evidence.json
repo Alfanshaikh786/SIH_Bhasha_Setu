@@ -1,0 +1,116 @@
+{
+  "notebook_path": "D:\\SIH\\research\\mundari-mt\\Mundari_LoRA_Training_Colab.ipynb",
+  "inspection": {
+    "total_cells": 33,
+    "code_cells": 16,
+    "executed_code_cells": 0,
+    "cells_with_outputs": 0,
+    "is_executed": false
+  },
+  "evidence": {
+    "environment": {
+      "python_version": null,
+      "pytorch_version": null,
+      "cuda_available": null,
+      "cuda_version": null,
+      "gpu_name": null,
+      "total_vram_gb": null,
+      "transformers_version": null,
+      "peft_version": null,
+      "datasets_version": null,
+      "accelerate_version": null
+    },
+    "model": {
+      "model_name": "ai4bharat/indictrans2-indic-indic-dist-320M",
+      "model_class": null,
+      "base_parameters": null,
+      "vocab_size_before": null
+    },
+    "tokenizer_expansion": {
+      "anchor_tag": "<hin_Deva>",
+      "new_tag": "<unr_Deva>",
+      "added_tokens": null,
+      "vocab_size_after": null,
+      "embedding_resized_shape": null,
+      "embedding_cloned": null
+    },
+    "conditioning": {
+      "hi_to_unr_prefix_valid": null,
+      "unr_to_hi_prefix_valid": null
+    },
+    "lora": {
+      "trainable_parameters": null,
+      "all_parameters": null,
+      "trainable_percent": null,
+      "target_modules_count": null
+    },
+    "forward_backward": {
+      "hi_to_unr_forward_loss": null,
+      "hi_to_unr_backward_success": null,
+      "unr_to_hi_forward_loss": null,
+      "unr_to_hi_backward_success": null
+    },
+    "tiny_overfit": {
+      "step_losses": [],
+      "initial_loss": null,
+      "final_loss": null,
+      "loss_decreased": null
+    },
+    "generation": {
+      "samples": [],
+      "ol_chiki_detected": null
+    },
+    "checkpoint": {
+      "saved": null,
+      "reloaded": null,
+      "reload_generation": null
+    },
+    "vram_profiling": {
+      "peak_allocated_gb": null,
+      "peak_reserved_gb": null,
+      "safety_margin_gb": null
+    }
+  },
+  "readiness": {
+    "overall_status": "NOT READY",
+    "failing_gate": "Gate 1 through Gate 9 (Missing Empirical Cloud Execution Artifacts)",
+    "gates": {
+      "Gate 1": {
+        "status": "BLOCKED (Unsynced)",
+        "detail": "Cloud execution outputs not present in local workspace."
+      },
+      "Gate 2": {
+        "status": "BLOCKED (Unsynced)",
+        "detail": "Cloud execution outputs not present in local workspace."
+      },
+      "Gate 3": {
+        "status": "BLOCKED (Unsynced)",
+        "detail": "Cloud execution outputs not present in local workspace."
+      },
+      "Gate 4": {
+        "status": "BLOCKED (Unsynced)",
+        "detail": "Cloud execution outputs not present in local workspace."
+      },
+      "Gate 5": {
+        "status": "BLOCKED (Unsynced)",
+        "detail": "Cloud execution outputs not present in local workspace."
+      },
+      "Gate 6": {
+        "status": "BLOCKED (Unsynced)",
+        "detail": "Cloud execution outputs not present in local workspace."
+      },
+      "Gate 7": {
+        "status": "BLOCKED (Unsynced)",
+        "detail": "Cloud execution outputs not present in local workspace."
+      },
+      "Gate 8": {
+        "status": "BLOCKED (Unsynced)",
+        "detail": "Cloud execution outputs not present in local workspace."
+      },
+      "Gate 9": {
+        "status": "BLOCKED (Unsynced)",
+        "detail": "Cloud execution outputs not present in local workspace."
+      }
+    }
+  }
+}

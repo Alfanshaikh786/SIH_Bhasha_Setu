@@ -62,6 +62,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Neural ASR Engine Router (Santali IndicConformer)
+try:
+    from server.api.asr_routes import router as asr_api_router
+    app.include_router(asr_api_router, prefix="/api/asr", tags=["Neural ASR"])
+except Exception as asr_err:
+    print(f"⚠️ ASR router mount warning: {asr_err}")
+
 # Language code normalization
 LANG_MAP = {
     'eng': 1, 'en': 1,

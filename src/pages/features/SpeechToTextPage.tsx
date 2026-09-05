@@ -8,33 +8,49 @@ import {
   Download, 
   Volume2, 
   Sparkles, 
-  FileText,
-  Clock,
-  RotateCcw,
-  Languages,
-  ArrowRight,
-  Trash2,
-  FileAudio,
-  Activity,
-  Info
+  FileText, 
+  Clock, 
+  RotateCcw, 
+  Languages, 
+  ArrowRight, 
+  Trash2, 
+  FileAudio, 
+  Activity, 
+  Info,
+  Cpu,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { SUPPORTED_LANGUAGES } from '../../data/languages';
 import { translateText, playTextSpeech } from '../../services/translationService';
+import { 
+  checkASRStatus, 
+  transcribeAudioFile, 
+  generateSRTContent, 
+  MicrophoneStreamer,
+  ASRSegment,
+  ASRStatusResponse 
+} from '../../services/asrService';
 
 interface TranscribeSegment {
   id: string;
   time: string;
+  startSec: number;
+  endSec: number;
   speaker: string;
   text: string;
   translation?: string;
   sourceLang: string;
   targetLang: string;
-  confidence?: number;
+  asrConfidence?: number | null;
+  translationConfidence?: number | null;
+  lexiconMatch?: boolean;
+  needsReview?: boolean;
 }
 
 export const SpeechToTextPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'mic' | 'upload'>('mic');
-  const [sourceLang, setSourceLang] = useState('sat'); // Spoken dialect
+  const [sourceLang, setSourceLang] = useState('sat'); // Default: Santali
   const [targetLang, setTargetLang] = useState('eng'); // Translation language
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -42,17 +58,26 @@ export const SpeechToTextPage: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [playingSegmentId, setPlayingSegmentId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [asrStatus, setAsrStatus] = useState<ASRStatusResponse | null>(null);
+  const [realTimeFactor, setRealTimeFactor] = useState<number | null>(null);
 
-  // Initialize clean transcript segments
+  // Transcript segments
   const [transcripts, setTranscripts] = useState<TranscribeSegment[]>([]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number | null>(null);
   const recognitionRef = useRef<any>(null);
+  const streamerRef = useRef<MicrophoneStreamer | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sourceLangObj = SUPPORTED_LANGUAGES.find(l => l.code === sourceLang) || SUPPORTED_LANGUAGES[0];
   const targetLangObj = SUPPORTED_LANGUAGES.find(l => l.code === targetLang) || SUPPORTED_LANGUAGES[SUPPORTED_LANGUAGES.length - 1];
+
+  // Poll ASR status on mount
+  useEffect(() => {
+    checkASRStatus().then(status => setAsrStatus(status)).catch(() => {});
+  }, []);
 
   // Timer for recording
   useEffect(() => {
@@ -112,18 +137,91 @@ export const SpeechToTextPage: React.FC = () => {
   }, [isRecording]);
 
   // Start Real-time Microphone Speech Recognition
-  const handleStartRecording = () => {
+  const handleStartRecording = async () => {
+    setErrorMessage(null);
+
+    // Phase 1 Scope Check
+    if (sourceLang === 'unr' || sourceLang === 'mundari') {
+      setErrorMessage('Mundari ASR is scheduled for Phase 2. This phase supports Santali (sat), Hindi (hin), and English (eng).');
+      return;
+    }
+    if (sourceLang === 'hoc' || sourceLang === 'ho') {
+      setErrorMessage('Ho ASR is scheduled for Phase 3. This phase supports Santali (sat), Hindi (hin), and English (eng).');
+      return;
+    }
+
+    // --- Santali: Use Neural IndicConformer via WebSocket Streamer ---
+    if (sourceLang === 'sat') {
+      try {
+        const streamer = new MicrophoneStreamer({
+          onInterim: (text: string) => {
+            setInterimText(text);
+          },
+          onFinal: async (seg: ASRSegment) => {
+            setIsProcessing(true);
+            let translation = '';
+            let transConf = 0.85;
+            let isLexicon = false;
+
+            if (targetLang !== 'sat') {
+              try {
+                const tr = await translateText(seg.text, 'sat', targetLang);
+                translation = tr.targetText;
+                transConf = tr.reliability === 'verified' ? 0.98 : tr.reliability === 'dataset' ? 0.92 : 0.85;
+                isLexicon = tr.reliability === 'verified';
+              } catch (e) {
+                console.warn('Translation error:', e);
+              }
+            }
+
+            const newSeg: TranscribeSegment = {
+              id: seg.id || `mic-${Date.now()}`,
+              time: `${Math.floor(seg.start_sec / 60).toString().padStart(2, '0')}:${Math.floor(seg.start_sec % 60).toString().padStart(2, '0')} - ${Math.floor(seg.end_sec / 60).toString().padStart(2, '0')}:${Math.floor(seg.end_sec % 60).toString().padStart(2, '0')}`,
+              startSec: seg.start_sec,
+              endSec: seg.end_sec,
+              speaker: 'Live Speaker',
+              text: seg.text,
+              translation: translation || undefined,
+              sourceLang: 'sat',
+              targetLang,
+              asrConfidence: seg.asr_confidence,
+              translationConfidence: transConf,
+              lexiconMatch: isLexicon,
+              needsReview: seg.needs_review
+            };
+
+            setTranscripts(prev => [newSeg, ...prev]);
+            setInterimText('');
+            setIsProcessing(false);
+          },
+          onError: (err: string) => {
+            console.warn('ASR Stream error:', err);
+            setErrorMessage(`Santali Neural ASR backend notice: ${err}. Ensure backend is running at http://127.0.0.1:5000.`);
+            setIsRecording(false);
+          }
+        });
+
+        await streamer.start();
+        streamerRef.current = streamer;
+        setIsRecording(true);
+      } catch (err: any) {
+        setErrorMessage(`Failed to start Santali microphone capture: ${err?.message || err}`);
+        setIsRecording(false);
+      }
+      return;
+    }
+
+    // --- Hindi / English: Use Browser Native Acoustic Models ---
     const win = window as unknown as { webkitSpeechRecognition?: any; SpeechRecognition?: any };
     const SpeechRecognitionClass = win.SpeechRecognition || win.webkitSpeechRecognition;
 
     if (!SpeechRecognitionClass) {
-      alert('Microphone speech recognition is not supported in this browser. Please try using Google Chrome or Microsoft Edge.');
+      setErrorMessage('Microphone speech recognition is not supported in this browser. Please try using Google Chrome or Microsoft Edge.');
       return;
     }
 
     try {
       const recognition = new SpeechRecognitionClass();
-      // Select appropriate recognition language
       recognition.lang = sourceLang === 'eng' ? 'en-IN' : 'hi-IN';
       recognition.continuous = true;
       recognition.interimResults = true;
@@ -140,15 +238,21 @@ export const SpeechToTextPage: React.FC = () => {
             if (spoken) {
               setIsProcessing(true);
               const trans = await translateText(spoken, sourceLang, targetLang);
+              const curSec = recordingSeconds;
               const newSegment: TranscribeSegment = {
                 id: `rec-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-                time: `00:00 - 00:${recordingSeconds < 10 ? '0' + recordingSeconds : recordingSeconds}`,
+                time: `00:${Math.max(0, curSec - 4).toString().padStart(2, '0')} - 00:${curSec.toString().padStart(2, '0')}`,
+                startSec: Math.max(0, curSec - 4),
+                endSec: curSec,
                 speaker: 'Live Speaker',
                 text: spoken,
                 translation: trans.targetText,
                 sourceLang,
                 targetLang,
-                confidence: trans.confidence || 0.96
+                asrConfidence: null, // Honest: browser Web Speech doesn't give verified acoustic logprob
+                translationConfidence: trans.reliability === 'verified' ? 0.98 : trans.reliability === 'dataset' ? 0.92 : 0.85,
+                lexiconMatch: trans.reliability === 'verified',
+                needsReview: false
               };
               setTranscripts(prev => [newSegment, ...prev]);
               setInterimText('');
@@ -183,58 +287,95 @@ export const SpeechToTextPage: React.FC = () => {
   const handleStopRecording = () => {
     setIsRecording(false);
     setInterimText('');
+    if (streamerRef.current) {
+      streamerRef.current.stop();
+      streamerRef.current = null;
+    }
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch {}
+      recognitionRef.current = null;
     }
   };
 
-  // Handle Audio File Upload & Transcription
+  // Handle Audio File Upload & Transcription (Real Audio Processing Pipeline)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setErrorMessage(null);
     setIsProcessing(true);
-    // Simulate neural speech transcription
-    await new Promise(r => setTimeout(r, 1200));
 
-    const sampleSentences = [
-      { text: 'ᱤᱧ ᱫᱚ ᱵᱮᱥ ᱜᱮ ᱢᱮᱱᱟᱹᱧᱟ᱾ ᱟᱯᱮ ᱪᱮᱫ ᱞᱮᱠᱟ ᱢᱮᱱᱟᱜ ᱯᱮᱭᱟ?', time: '00:00 - 00:06', speaker: 'Speaker 1' },
-      { text: 'ᱟᱞᱮ ᱦᱚᱸ ᱵᱮᱥ ᱜᱮ ᱢᱮᱱᱟᱜ ᱞᱮᱭᱟ᱾', time: '00:07 - 00:14', speaker: 'Speaker 2' }
-    ];
-
-    const newSegments: TranscribeSegment[] = [];
-    for (let i = 0; i < sampleSentences.length; i++) {
-      const s = sampleSentences[i];
-      const trans = await translateText(s.text, sourceLang, targetLang);
-      newSegments.push({
-        id: `upload-${Date.now()}-${i}`,
-        time: s.time,
-        speaker: s.speaker,
-        text: s.text,
-        translation: trans.targetText,
-        sourceLang,
-        targetLang,
-        confidence: 0.96
-      });
+    // Phase 1 Scope Check
+    if (sourceLang === 'unr' || sourceLang === 'mundari') {
+      setErrorMessage('Mundari ASR is scheduled for Phase 2. This phase supports Santali (sat).');
+      setIsProcessing(false);
+      return;
+    }
+    if (sourceLang === 'hoc' || sourceLang === 'ho') {
+      setErrorMessage('Ho ASR is scheduled for Phase 3. This phase supports Santali (sat).');
+      setIsProcessing(false);
+      return;
     }
 
-    setTranscripts(prev => [...newSegments, ...prev]);
-    setIsProcessing(false);
+    try {
+      const result = await transcribeAudioFile(file, sourceLang, targetLang);
+      setRealTimeFactor(result.real_time_factor);
+
+      if (result.segments.length === 0 && !result.text) {
+        setErrorMessage('No audible speech detected in the uploaded audio file.');
+        setIsProcessing(false);
+        return;
+      }
+
+      const newSegments: TranscribeSegment[] = result.segments.map((s, idx) => ({
+        id: s.id || `upload-${Date.now()}-${idx}`,
+        time: `${Math.floor(s.start_sec / 60).toString().padStart(2, '0')}:${Math.floor(s.start_sec % 60).toString().padStart(2, '0')} - ${Math.floor(s.end_sec / 60).toString().padStart(2, '0')}:${Math.floor(s.end_sec % 60).toString().padStart(2, '0')}`,
+        startSec: s.start_sec,
+        endSec: s.end_sec,
+        speaker: s.speaker || `Speaker ${1 + (idx % 2)}`,
+        text: s.text,
+        translation: s.translation,
+        sourceLang,
+        targetLang,
+        asrConfidence: s.asr_confidence,
+        translationConfidence: s.translation_confidence,
+        lexiconMatch: s.lexicon_match,
+        needsReview: s.needs_review
+      }));
+
+      setTranscripts(prev => [...newSegments, ...prev]);
+    } catch (err: any) {
+      console.error('File upload ASR error:', err);
+      setErrorMessage(`Neural ASR failed: ${err.message || 'Ensure backend server is running at http://127.0.0.1:5000.'}`);
+    } finally {
+      setIsProcessing(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const handleCopyAll = () => {
-    const fullText = transcripts.map(t => `${t.time} [${t.speaker}] (${t.sourceLang.toUpperCase()} → ${t.targetLang.toUpperCase()}):\n${t.text}\nTranslation: ${t.translation}`).join('\n\n');
+    const fullText = transcripts.map(t => `${t.time} [${t.speaker}] (${t.sourceLang.toUpperCase()} → ${t.targetLang.toUpperCase()}):\n${t.text}\nTranslation: ${t.translation || ''}`).join('\n\n');
     navigator.clipboard.writeText(fullText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDownloadSRT = () => {
-    let srtContent = '';
-    transcripts.forEach((t, index) => {
-      srtContent += `${index + 1}\n00:00:00,000 --> 00:00:08,000\n${t.text}\n${t.translation || ''}\n\n`;
-    });
-    const blob = new Blob([srtContent], { type: 'text/plain' });
+    const asrSegments: ASRSegment[] = transcripts.map(t => ({
+      id: t.id,
+      start_sec: t.startSec,
+      end_sec: t.endSec,
+      text: t.text,
+      speaker: t.speaker,
+      translation: t.translation,
+      asr_confidence: t.asrConfidence,
+      translation_confidence: t.translationConfidence,
+      needs_review: t.needsReview || false
+    }));
+    const srtContent = generateSRTContent(asrSegments);
+    const blob = new Blob([srtContent], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -250,11 +391,17 @@ export const SpeechToTextPage: React.FC = () => {
     <section className="min-h-screen bg-slate-50/50 pt-28 pb-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-6">
         
-        {/* Header */}
+        {/* Header & Engine Status */}
         <div className="w-full py-4 flex flex-col items-center text-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-green-50 border border-[#d1ead4] text-xs font-bold text-[#14532d] mb-3">
-            <Sparkles className="w-3.5 h-3.5 text-[#249144]" /> Neural Automatic Speech Recognition (ASR)
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-green-50 border border-[#d1ead4] text-xs font-bold text-[#14532d] mb-3 shadow-2xs">
+            <Sparkles className="w-3.5 h-3.5 text-[#249144]" /> 
+            <span>Neural Automatic Speech Recognition (ASR)</span>
+            <span className="text-slate-300">•</span>
+            <span className="text-[#249144] font-mono font-semibold">
+              {asrStatus?.status === 'ready' ? 'IndicConformer Online' : 'Engine Standby'}
+            </span>
           </div>
+
           <h1 className="domine-bold text-3xl sm:text-4xl md:text-5xl font-semibold leading-snug text-gray-900">
             Speech to Text (ASR)
           </h1>
@@ -262,9 +409,40 @@ export const SpeechToTextPage: React.FC = () => {
             <div className="absolute left-1/2 -translate-x-1/2 -top-[1px] h-[3px] w-16 bg-[#86c498] rounded-full"></div>
           </div>
           <p className="mt-3 max-w-2xl text-xs sm:text-sm text-slate-500 font-normal">
-            Transcribe real-time tribal audio speech and field recordings into verified written text with bilingual subtitles.
+            Transcribe real-time tribal audio speech and field recordings into authentic native script with bilingual subtitles.
           </p>
+
+          {/* Technical Engine Status Pill */}
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-500">
+            <span className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+              <Cpu className="w-3 h-3 text-[#249144]" /> Model: <strong className="text-slate-700 font-medium">IndicConformer Santali (ONNX)</strong>
+            </span>
+            <span className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+              <CheckCircle2 className="w-3 h-3 text-[#249144]" /> Script: <strong className="text-slate-700 font-medium">Ol Chiki (U+1C50–U+1C7F)</strong>
+            </span>
+            {realTimeFactor !== null && (
+              <span className="flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 text-[#14532d]">
+                ⚡ RTF: <strong className="font-mono">{realTimeFactor.toFixed(2)}x</strong>
+              </span>
+            )}
+          </div>
         </div>
+
+        {/* Error Alert Box */}
+        {errorMessage && (
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 flex items-start gap-3 shadow-2xs">
+            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold">{errorMessage}</p>
+            </div>
+            <button 
+              onClick={() => setErrorMessage(null)} 
+              className="text-amber-500 hover:text-amber-800 text-xs font-bold cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Dialect & Translation Language Bar */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 flex flex-wrap items-center justify-between gap-4">
@@ -275,13 +453,16 @@ export const SpeechToTextPage: React.FC = () => {
             </span>
             <select
               value={sourceLang}
-              onChange={(e) => setSourceLang(e.target.value)}
+              onChange={(e) => {
+                setSourceLang(e.target.value);
+                setErrorMessage(null);
+              }}
               aria-label="Select Spoken Language Dialect"
               className="bg-slate-50 border border-slate-200 hover:border-[#249144] rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none transition cursor-pointer"
             >
               {SUPPORTED_LANGUAGES.map(l => (
                 <option key={l.id} value={l.code}>
-                  {l.name} ({l.nativeName}) {l.isTribal ? '★ Tribal' : ''}
+                  {l.name} ({l.nativeName}) {l.code === 'sat' ? '★ Neural ASR' : l.isTribal ? '(Phase 2/3)' : ''}
                 </option>
               ))}
             </select>
@@ -337,7 +518,7 @@ export const SpeechToTextPage: React.FC = () => {
               }`}
             >
               <Upload className="w-4 h-4 text-[#249144]" />
-              <span>Upload Audio File (MP3/WAV)</span>
+              <span>Upload Audio File (MP3/WAV/M4A)</span>
             </button>
           </div>
 
@@ -439,7 +620,7 @@ export const SpeechToTextPage: React.FC = () => {
                   {isProcessing && (
                     <div className="py-4 text-center text-xs text-slate-600 font-semibold flex items-center justify-center gap-2">
                       <Activity className="w-4 h-4 animate-spin text-[#249144]" />
-                      <span>Neural ASR processing audio waveform...</span>
+                      <span>Neural IndicConformer processing audio waveform...</span>
                     </div>
                   )}
                 </div>
@@ -455,6 +636,9 @@ export const SpeechToTextPage: React.FC = () => {
                 </p>
                 <p>
                   2. ASR generates text in native script & translates it to {targetLangObj.name} with audio playback.
+                </p>
+                <p className="text-slate-400 italic">
+                  Note: Santali uses AI4Bharat IndicConformer. Mundari & Ho ASR will arrive in Phases 2 & 3.
                 </p>
               </div>
 
@@ -505,7 +689,7 @@ export const SpeechToTextPage: React.FC = () => {
                       <Mic className="w-8 h-8 text-slate-300" />
                       <p className="font-semibold text-slate-600">No speech transcribed yet.</p>
                       <p className="text-slate-400 text-[11px]">
-                        Tap the green mic button on the left to begin speaking in {sourceLangObj.name}.
+                        Tap the green mic button or upload an audio file to begin transcribing {sourceLangObj.name}.
                       </p>
                     </div>
                   ) : (
@@ -551,6 +735,31 @@ export const SpeechToTextPage: React.FC = () => {
                           </button>
                         </div>
 
+                        {/* Honest Confidence & Quality Badges */}
+                        <div className="flex flex-wrap items-center gap-2 pt-1 text-[10px]">
+                          {t.asrConfidence !== null && t.asrConfidence !== undefined ? (
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-[#14532d] border border-emerald-200 font-semibold">
+                              ASR Quality: {(t.asrConfidence * 100).toFixed(0)}% (Acoustic Verified)
+                            </span>
+                          ) : t.sourceLang === 'sat' ? (
+                            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-semibold">
+                              ASR: IndicConformer (Neural CTC)
+                            </span>
+                          ) : null}
+
+                          {t.needsReview && (
+                            <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-semibold">
+                              Needs Verification
+                            </span>
+                          )}
+
+                          {t.translation && t.lexiconMatch && (
+                            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 font-semibold">
+                              Translation: Lexicon Verified
+                            </span>
+                          )}
+                        </div>
+
                         {/* Translated Subtitle */}
                         {t.translation && (
                           <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-100 flex items-start justify-between gap-3">
@@ -580,7 +789,7 @@ export const SpeechToTextPage: React.FC = () => {
 
               {/* Footer Controls */}
               <div className="pt-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-400 mt-4">
-                <span>Sampling: 16 kHz • Neural Precision ASR</span>
+                <span>Sampling: 16 kHz • Neural IndicConformer ASR</span>
                 {transcripts.length > 0 && (
                   <button
                     onClick={() => setTranscripts([])}

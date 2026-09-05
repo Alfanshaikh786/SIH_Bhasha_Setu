@@ -15,18 +15,25 @@ import {
   Info,
   Mic,
   MicOff,
-  Radio
+  Radio,
+  BookOpen,
+  AlertTriangle
 } from 'lucide-react';
-import { SUPPORTED_LANGUAGES, TribalLanguage } from '../../data/languages';
-import { translateText, playTextSpeech } from '../../services/translationService';
+import { translateText, playTextSpeech, TranslationResult } from '../../services/translationService';
 import { ClassroomDatabaseExplorer } from '../../components/common/ClassroomDatabaseExplorer';
+import {
+  SupportedLanguage,
+  CENTRAL_LANGUAGES,
+  SUPPORTED_LANGUAGE_LIST
+} from '../../services/languageService';
+import { getCapability, getStatusBadge, getOfflineModeLabel } from '../../services/translationCapabilities';
 
 export const TextToTextPage: React.FC = () => {
-  const [sourceLang, setSourceLang] = useState('eng');
-  const [targetLang, setTargetLang] = useState('sat'); // Default Santali
+  const [sourceLang, setSourceLang] = useState<SupportedLanguage>('english');
+  const [targetLang, setTargetLang] = useState<SupportedLanguage>('santali');
   const [inputText, setInputText] = useState('');
   const [outputText, setOutputText] = useState('');
-  const [transliteration, setTransliteration] = useState('');
+  const [translationResult, setTranslationResult] = useState<TranslationResult | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showKeyboard, setShowKeyboard] = useState(false);
@@ -43,29 +50,32 @@ export const TextToTextPage: React.FC = () => {
     { source: 'How is your health?', target: 'ᱦᱚᱲᱢᱚ ᱵᱮᱥ ᱢᱮᱱᱟᱜ-ᱟ?', from: 'English', to: 'Santali', time: '5m ago' }
   ]);
 
-  const sourceLangObj = SUPPORTED_LANGUAGES.find(l => l.code === sourceLang) || SUPPORTED_LANGUAGES[SUPPORTED_LANGUAGES.length - 1];
-  const targetLangObj = SUPPORTED_LANGUAGES.find(l => l.code === targetLang) || SUPPORTED_LANGUAGES[0];
+  const sourceLangInfo = CENTRAL_LANGUAGES[sourceLang];
+  const targetLangInfo = CENTRAL_LANGUAGES[targetLang];
 
   const handleTranslate = async (overrideText?: string) => {
     const textToUse = (typeof overrideText === 'string' ? overrideText : inputText).trim();
     if (!textToUse) return;
     setIsTranslating(true);
+    setTranslationResult(null);
     const result = await translateText(textToUse, sourceLang, targetLang);
-    setOutputText(result.targetText);
-    setTransliteration(result.transliteration || '');
+    setTranslationResult(result);
+    setOutputText(result.success && result.targetText ? result.targetText : '');
     setIsTranslating(false);
 
-    // Append to history
-    setHistory(prev => [
-      {
-        source: textToUse,
-        target: result.targetText,
-        from: sourceLangObj.name,
-        to: targetLangObj.name,
-        time: 'Just now'
-      },
-      ...prev.slice(0, 9)
-    ]);
+    // Append to history (only for successful translations)
+    if (result.success && result.targetText) {
+      setHistory(prev => [
+        {
+          source: textToUse,
+          target: result.targetText,
+          from: sourceLangInfo.name,
+          to: targetLangInfo.name,
+          time: 'Just now'
+        },
+        ...prev.slice(0, 9)
+      ]);
+    }
   };
 
   const handleToggleMic = async () => {
@@ -100,12 +110,12 @@ export const TextToTextPage: React.FC = () => {
 
     try {
       const recognition = new SpeechRecognitionClass();
-      recognition.lang = sourceLang === 'eng' ? 'en-IN' : (sourceLang === 'hin' || sourceLang === 'sat' || sourceLang === 'bhi' || sourceLang === 'gon' ? 'hi-IN' : 'en-IN');
+      recognition.lang = sourceLang === 'english' ? 'en-IN' : (sourceLang === 'hindi' || sourceLang === 'santali' || sourceLang === 'mundari' || sourceLang === 'ho' ? 'hi-IN' : 'en-IN');
       recognition.continuous = true;
       recognition.interimResults = true;
 
       setIsListening(true);
-      setSpeechStatus(`Listening in ${sourceLangObj.name}... Speak now (tap mic to stop).`);
+      setSpeechStatus(`Listening in ${sourceLangInfo.name}... Speak now (tap mic to stop).`);
 
       let spokenAccum = '';
 
@@ -169,7 +179,7 @@ export const TextToTextPage: React.FC = () => {
 
   const handleDownload = () => {
     const element = document.createElement('a');
-    const file = new Blob([`Source (${sourceLangObj.name}):\n${inputText}\n\nTranslation (${targetLangObj.name}):\n${outputText}`], { type: 'text/plain' });
+    const file = new Blob([`Source (${sourceLangInfo.name}):\n${inputText}\n\nTranslation (${targetLangInfo.name}):\n${outputText}`], { type: 'text/plain' });
     element.href = URL.createObjectURL(file);
     element.download = `BhashaSetu_Translation_${Date.now()}.txt`;
     document.body.appendChild(element);
@@ -197,7 +207,7 @@ export const TextToTextPage: React.FC = () => {
             <div className="absolute left-1/2 -translate-x-1/2 -top-[1px] h-[3px] w-16 bg-[#86c498] rounded-full"></div>
           </div>
           <p className="mt-3 max-w-2xl text-sm sm:text-base text-slate-500">
-            Translate text and conversations between 13+ tribal and national languages instantly with our AI model.
+            Translate text and conversations between the 5 supported Bhasha Setu languages.
           </p>
         </div>
 
@@ -213,28 +223,17 @@ export const TextToTextPage: React.FC = () => {
                 <span className="text-xs font-bold text-slate-400 uppercase">From:</span>
                 <select
                   value={sourceLang}
-                  onChange={(e) => setSourceLang(e.target.value)}
+                  onChange={(e) => setSourceLang(e.target.value as SupportedLanguage)}
                   aria-label="Select source language"
                   className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-sm font-semibold text-slate-800 outline-none hover:border-[#249144] transition shadow-sm cursor-pointer"
                 >
-                  {SUPPORTED_LANGUAGES.map(lang => (
-                    <option key={lang.id} value={lang.code}>
-                      {lang.name} {lang.nativeName ? `(${lang.nativeName})` : ''}
+                  {SUPPORTED_LANGUAGE_LIST.map(lang => (
+                    <option key={lang.id} value={lang.id}>
+                      {lang.flag} {lang.name}
                     </option>
                   ))}
                 </select>
               </div>
-
-              {sourceLangObj.virtualKeys && (
-                <button
-                  onClick={() => setShowKeyboard(!showKeyboard)}
-                  className={`p-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition ${showKeyboard ? 'bg-[#249144] text-white border-[#249144]' : 'bg-white text-slate-600 border-slate-200 hover:border-[#249144]'}`}
-                  title="Toggle on-screen script keyboard"
-                >
-                  <Keyboard className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Script Keys</span>
-                </button>
-              )}
             </div>
 
             {/* Middle Swap Button */}
@@ -254,13 +253,13 @@ export const TextToTextPage: React.FC = () => {
                 <span className="text-xs font-bold text-slate-400 uppercase">To:</span>
                 <select
                   value={targetLang}
-                  onChange={(e) => setTargetLang(e.target.value)}
+                  onChange={(e) => setTargetLang(e.target.value as SupportedLanguage)}
                   aria-label="Select target language"
                   className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-sm font-semibold text-slate-800 outline-none hover:border-[#249144] transition shadow-sm cursor-pointer"
                 >
-                  {SUPPORTED_LANGUAGES.map(lang => (
-                    <option key={lang.id} value={lang.code}>
-                      {lang.name} {lang.nativeName ? `(${lang.nativeName})` : ''}
+                  {SUPPORTED_LANGUAGE_LIST.map(lang => (
+                    <option key={lang.id} value={lang.id}>
+                      {lang.flag} {lang.name}
                     </option>
                   ))}
                 </select>
@@ -280,36 +279,7 @@ export const TextToTextPage: React.FC = () => {
 
           </div>
 
-          {/* Virtual Keyboard Drawer (if enabled) */}
-          {showKeyboard && sourceLangObj.virtualKeys && (
-            <div className="bg-slate-100/90 border-b border-slate-200 p-4 animate-in fade-in duration-150">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-600">
-                  {sourceLangObj.name} Script ({sourceLangObj.script})
-                </span>
-                <button onClick={() => setShowKeyboard(false)} className="text-xs text-slate-400 hover:text-slate-600">
-                  Close
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {sourceLangObj.virtualKeys.map((key, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleInsertKey(key)}
-                    className="min-w-[32px] h-9 px-2 bg-white hover:bg-green-50 border border-slate-200 hover:border-[#249144] rounded-lg text-sm font-bold text-slate-800 shadow-sm active:scale-95 transition"
-                  >
-                    {key}
-                  </button>
-                ))}
-                <button
-                  onClick={() => handleInsertKey(' ')}
-                  className="px-4 h-9 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50"
-                >
-                  Space
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Virtual Keyboard Drawer — removed; language list is now registry-based (5 project languages) */}
 
           {/* Text Areas Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-200">
@@ -327,7 +297,7 @@ export const TextToTextPage: React.FC = () => {
               <textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder={`Write, paste, or click the mic to speak in ${sourceLangObj.name}...`}
+                placeholder={`Write, paste, or click the mic to speak in ${sourceLangInfo.name}...`}
                 className={`w-full flex-1 resize-none bg-transparent outline-none text-base sm:text-lg leading-relaxed text-slate-800 placeholder-slate-300 font-normal ${speechStatus ? 'pt-8' : ''}`}
                 maxLength={500}
               />
@@ -381,6 +351,31 @@ export const TextToTextPage: React.FC = () => {
             {/* Output Box */}
             <div className="flex flex-col p-6 min-h-[280px] sm:min-h-[340px] bg-slate-50/40 justify-between">
               <div>
+                {/* Capability indicator for this language pair */}
+                {sourceLang !== targetLang && (() => {
+                  const cap = getCapability(sourceLang, targetLang);
+                  return cap ? (
+                    <div className="mb-3 flex flex-wrap gap-1.5 items-center text-[10px]">
+                      <span className={`px-2 py-0.5 rounded-full font-bold border ${
+                        cap.status === 'verified' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+                        cap.status === 'dataset' ? 'bg-blue-50 border-blue-200 text-blue-800' :
+                        cap.status === 'experimental' ? 'bg-amber-50 border-amber-200 text-amber-800' :
+                        'bg-rose-50 border-rose-200 text-rose-800'
+                      }`}>
+                        {cap.fullSentence ? '✓ Full Sentence Supported' : '✗ No Full Sentence Translation'}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-semibold">
+                        {getOfflineModeLabel(cap.offlineMode)}
+                      </span>
+                      {cap.provider && (
+                        <span className="px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 font-semibold">
+                          {cap.provider}
+                        </span>
+                      )}
+                    </div>
+                  ) : null;
+                })()}
+
                 {isTranslating ? (
                   <div className="flex items-center gap-2 text-sm text-[#249144] animate-pulse pt-2">
                     <Sparkles className="w-4 h-4 animate-spin" /> Neural translation in progress...
@@ -390,16 +385,67 @@ export const TextToTextPage: React.FC = () => {
                     <p className="text-base sm:text-lg leading-relaxed text-slate-900 font-medium whitespace-pre-wrap select-text">
                       {outputText}
                     </p>
-                    {transliteration && (
+                    {translationResult?.transliteration && (
                       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-green-50/90 border border-green-200 text-xs font-mono font-semibold text-[#14532d] shadow-2xs">
                         <span className="text-[10px] uppercase font-sans text-slate-400 font-bold">Pronunciation:</span>
-                        <span>/{transliteration}/</span>
+                        <span>/{translationResult.transliteration}/</span>
+                      </div>
+                    )}
+                    {/* Translation metadata badges */}
+                    {translationResult && (() => {
+                      const badge = getStatusBadge(translationResult.reliability);
+                      return (
+                        <div className="flex flex-wrap gap-1.5 items-center text-[10px]">
+                          <span className={`px-2 py-0.5 rounded-full font-bold border ${
+                            translationResult.reliability === 'verified' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+                            translationResult.reliability === 'dataset' ? 'bg-blue-50 border-blue-200 text-blue-800' :
+                            'bg-amber-50 border-amber-200 text-amber-800'
+                          }`}>
+                            {badge.icon} {badge.label}
+                          </span>
+                          {translationResult.outputScript && (
+                            <span className="px-2 py-0.5 rounded-full bg-purple-50 border border-purple-200 text-purple-800 font-semibold">
+                              Script: {translationResult.outputScript}
+                            </span>
+                          )}
+                          <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-semibold capitalize">
+                            Method: {translationResult.method}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : !isTranslating && translationResult && !translationResult.success ? (
+                  <div className="space-y-3">
+                    <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs space-y-1">
+                      <div className="flex items-center gap-2 font-bold text-rose-900">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                        ✗ Translation Unavailable
+                      </div>
+                      <p className="text-rose-800 text-[11px] leading-relaxed">{translationResult.error}</p>
+                    </div>
+                    {/* Vocabulary Assistance Panel — word-level only, never a sentence */}
+                    {translationResult.vocabularyAssistance && translationResult.vocabularyAssistance.length > 0 && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs space-y-2">
+                        <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                          <BookOpen className="w-3.5 h-3.5 text-amber-700" />
+                          Vocabulary Assistance
+                          <span className="text-[9px] font-normal text-amber-600 ml-1">(word-level only — not a sentence translation)</span>
+                        </div>
+                        <div className="grid gap-1">
+                          {translationResult.vocabularyAssistance.map((item, i) => (
+                            <div key={i} className="flex items-center gap-2 bg-white px-2.5 py-1 rounded-lg border border-amber-200">
+                              <span className="font-bold text-slate-700 capitalize">{item.word}:</span>
+                              <span className="text-amber-900">{item.meaning}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
                 ) : (
                   <p className="text-base text-slate-300 italic pt-2 font-light">
-                    Translation in {targetLangObj.name} will appear here...
+                    Translation in {targetLangInfo.name} will appear here...
                   </p>
                 )}
               </div>
@@ -498,8 +544,8 @@ export const TextToTextPage: React.FC = () => {
         <div className="mt-8">
           <ClassroomDatabaseExplorer
             onSelectSentence={(eng, sat) => {
-              setSourceLang('eng');
-              setTargetLang('sat');
+              setSourceLang('english');
+              setTargetLang('santali');
               setInputText(eng);
               setOutputText(sat);
               window.scrollTo({ top: 120, behavior: 'smooth' });
@@ -507,27 +553,7 @@ export const TextToTextPage: React.FC = () => {
           />
         </div>
 
-        {/* Pre-loaded Sample Phrases */}
-        <div className="mt-8">
-          <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3">
-            Quick Phrases ({sourceLangObj.name}):
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {sourceLangObj.samplePhrases?.map((phrase, i) => (
-              <button
-                key={i}
-                onClick={() => {
-                  setInputText(phrase.text);
-                  handleTranslate();
-                }}
-                className="px-3.5 py-2 rounded-xl bg-white border border-slate-200/80 hover:border-[#249144] hover:bg-green-50/50 transition-all text-xs text-slate-700 font-medium shadow-sm text-left"
-              >
-                <span className="font-bold block text-slate-900">{phrase.text}</span>
-                <span className="text-[10px] text-slate-400">{phrase.translation}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Sample phrases removed — they relied on language objects from the old data/languages.ts source */}
 
         {/* Beta Disclaimer Note */}
         <div className="mt-8 text-center">

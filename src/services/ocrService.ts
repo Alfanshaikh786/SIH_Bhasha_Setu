@@ -1,44 +1,58 @@
-// High Accuracy In-Browser Multi-Script & Stylized Text OCR Engine
-// Features: Chromatic Background Delta Separation, Adaptive Binarization,
-// Morphological Denoising, Watermark Stripping, and Multi-Pass Tesseract Recognition
+// Intelligent Multi-Script OCR Engine for Bhasha Setu (Multi-Script Validation Upgrade)
+// Features:
+// - Multi-Script Support & Transparent Capability Routing
+// - Preprocessing Safety Rules (preserves clean document antialiasing)
+// - Configurable Confidence-Based Retry Logic (OCR_RETRY_THRESHOLD = 70)
+// - PSM Mode Arbitration (PSM 3, PSM 6, PSM 11)
+// - Ground Truth CER / WER Validation & Telemetry
+// - Multi-Script Benchmark Suite Runner
+// - Worker Caching & Memory Leak Prevention
 
-import { createWorker, PSM } from 'tesseract.js';
+import { PSM } from 'tesseract.js';
+import {
+  ImageQualityReport,
+  OCRProgress,
+  RealOCRResult,
+  OCRDebugInfo,
+  OCRBenchmarkReport,
+  MultiScriptBenchmarkSuiteReport
+} from './ocr/types';
+import { analyzeImageQuality, loadImageElement } from './ocr/imageQualityService';
+import {
+  generateAdaptiveCandidates,
+  chromaticDeltaPreprocessing,
+  normalizeContrast,
+  toGrayscale
+} from './ocr/imagePreprocessor';
+import { recognizeWithWorker } from './ocr/tesseractWorkerPool';
+import { runFullOCRBenchmark, runMultiScriptBenchmarkSuite } from './ocr/ocrBenchmarkService';
+import { evaluateOCRAccuracy } from './ocr/evaluationMetrics';
 
-export interface OCRProgress {
-  status: string;
-  progress: number;
-}
+export type {
+  ImageQualityReport,
+  OCRProgress,
+  RealOCRResult,
+  OCRDebugInfo,
+  OCRBenchmarkReport,
+  MultiScriptBenchmarkSuiteReport
+};
+export { analyzeImageQuality, runFullOCRBenchmark, runMultiScriptBenchmarkSuite, evaluateOCRAccuracy };
 
-export interface RealOCRResult {
-  text: string;
-  detectedLanguage: string;
-  confidence: number;
-  lines: string[];
-  wordsCount: number;
-}
+/**
+ * Configurable OCR Retry Threshold and Limits
+ */
+export const OCR_RETRY_THRESHOLD = 70;
+export const MAX_OCR_RETRIES = 2;
 
 /**
  * Loads an image into an HTMLImageElement
  */
 function loadImage(src: string | File | Blob): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = (e) => reject(e);
-
-    if (typeof src === 'string') {
-      img.src = src;
-    } else {
-      img.src = URL.createObjectURL(src);
-    }
-  });
+  return loadImageElement(src);
 }
 
 /**
- * Chromatic Delta & Multi-Technique Canvas Preprocessor
- * Converts any colored 3D letters, graphic words, scanned papers, or photos
- * into crisp, solid, black characters on pure white background
+ * Backwards-compatible Canvas Preprocessor
  */
 export async function preprocessImageForOCR(
   source: string | File | Blob,
@@ -51,181 +65,42 @@ export async function preprocessImageForOCR(
 
     const img = await loadImage(source);
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return typeof source === 'string' ? source : URL.createObjectURL(source);
-
     let width = img.naturalWidth || img.width;
     let height = img.naturalHeight || img.height;
 
-    // Scale image to optimal OCR DPI (minimum 800px, max 2400px)
-    const targetMin = 900;
+    const targetMin = 950;
     if (width < targetMin || height < targetMin) {
       const scale = Math.max(targetMin / width, targetMin / height);
       width = Math.round(width * scale);
       height = Math.round(height * scale);
-    } else if (width > 2600 || height > 2600) {
-      const scale = Math.min(2600 / width, 2600 / height);
-      width = Math.round(width * scale);
-      height = Math.round(height * scale);
     }
-
     canvas.width = width;
     canvas.height = height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return typeof source === 'string' ? source : URL.createObjectURL(source);
 
-    // Draw scaled image
     ctx.drawImage(img, 0, 0, width, height);
 
     if (mode === 'original') {
       return canvas.toDataURL('image/png');
     }
 
-    const imgData = ctx.getImageData(0, 0, width, height);
-    const d = imgData.data;
-
-    // 1. Sample perimeter border to detect background color
-    let bgR = 0, bgG = 0, bgB = 0;
-    let bgSampleCount = 0;
-    const step = Math.max(1, Math.floor(width / 40));
-
-    for (let x = 0; x < width; x += step) {
-      // Top row & bottom row
-      const topIdx = (0 * width + x) * 4;
-      const botIdx = ((height - 1) * width + x) * 4;
-      bgR += d[topIdx] + d[botIdx];
-      bgG += d[topIdx + 1] + d[botIdx + 1];
-      bgB += d[topIdx + 2] + d[botIdx + 2];
-      bgSampleCount += 2;
-    }
-    for (let y = 0; y < height; y += step) {
-      // Left col & right col
-      const leftIdx = (y * width + 0) * 4;
-      const rightIdx = (y * width + (width - 1)) * 4;
-      bgR += d[leftIdx] + d[rightIdx];
-      bgG += d[leftIdx + 1] + d[rightIdx + 1];
-      bgB += d[leftIdx + 2] + d[rightIdx + 2];
-      bgSampleCount += 2;
-    }
-
-    bgR = Math.round(bgR / bgSampleCount);
-    bgG = Math.round(bgG / bgSampleCount);
-    bgB = Math.round(bgB / bgSampleCount);
-
-    const isLightBg = (0.299 * bgR + 0.587 * bgG + 0.114 * bgB) > 120;
-    const watermarkCutoffY = Math.floor(height * 0.94); // bottom 6% watermark strip
-
-    // 2. Mode A: Chromatic Delta + Luminance Difference (Handles 3D letters like DOG, CAT, colored signs)
     if (mode === 'chromatic') {
-      const outputMask = new Uint8Array(width * height);
-
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const i = (y * width + x) * 4;
-          const r = d[i];
-          const g = d[i + 1];
-          const b = d[i + 2];
-
-          // Mask out bottom watermark strip if background is clean
-          if (y > watermarkCutoffY && isLightBg && (r < 60 && g < 60 && b < 60)) {
-            outputMask[y * width + x] = 255; // White background
-            continue;
-          }
-
-          // Euclidean color distance from background
-          const colorDist = Math.sqrt(
-            Math.pow(r - bgR, 2) +
-            Math.pow(g - bgG, 2) +
-            Math.pow(b - bgB, 2)
-          );
-
-          // Luminance distance
-          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-          const bgLum = 0.299 * bgR + 0.587 * bgG + 0.114 * bgB;
-          const lumDist = Math.abs(lum - bgLum);
-
-          // Saturation difference
-          const maxC = Math.max(r, g, b);
-          const minC = Math.min(r, g, b);
-          const saturation = maxC === 0 ? 0 : (maxC - minC) / maxC;
-
-          // If pixel has significant color difference, saturation, or luminance delta => Foreground Letter
-          const isForeground = colorDist > 42 || lumDist > 45 || (saturation > 0.28 && lumDist > 25);
-
-          outputMask[y * width + x] = isForeground ? 0 : 255;
-        }
-      }
-
-      // Simple 3x3 Morphological Closing to seal 3D specular glare gaps inside letter bodies
-      for (let y = 1; y < height - 1; y++) {
-        for (let x = 1; x < width - 1; x++) {
-          const idx = y * width + x;
-          const i = idx * 4;
-
-          if (outputMask[idx] === 255) {
-            // Count surrounding black pixels
-            let blackNeighbors = 0;
-            if (outputMask[idx - 1] === 0) blackNeighbors++;
-            if (outputMask[idx + 1] === 0) blackNeighbors++;
-            if (outputMask[idx - width] === 0) blackNeighbors++;
-            if (outputMask[idx + width] === 0) blackNeighbors++;
-
-            // If completely surrounded by black letter interior, close the gap
-            if (blackNeighbors >= 3) {
-              d[i] = 0;
-              d[i + 1] = 0;
-              d[i + 2] = 0;
-              continue;
-            }
-          }
-
-          const val = outputMask[idx];
-          d[i] = val;
-          d[i + 1] = val;
-          d[i + 2] = val;
-        }
-      }
-
-      ctx.putImageData(imgData, 0, 0);
-      return canvas.toDataURL('image/png');
+      return chromaticDeltaPreprocessing(canvas);
     }
 
-    // 3. Mode B: Standard Otsu's Adaptive Threshold (for printed black/white documents)
-    const histogram = new Array(256).fill(0);
-    const grays = new Uint8Array(width * height);
+    const imgData = ctx.getImageData(0, 0, width, height);
+    const grays = toGrayscale(imgData.data);
+    const normalized = normalizeContrast(grays);
 
-    for (let i = 0; i < d.length; i += 4) {
-      const gray = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
-      grays[i / 4] = gray;
-      histogram[gray]++;
+    for (let i = 0; i < normalized.length; i++) {
+      const val = mode === 'threshold' ? (normalized[i] < 128 ? 0 : 255) : normalized[i];
+      const o = i * 4;
+      imgData.data[o] = val;
+      imgData.data[o + 1] = val;
+      imgData.data[o + 2] = val;
+      imgData.data[o + 3] = 255;
     }
-
-    let sum = 0;
-    for (let t = 0; t < 256; t++) sum += t * histogram[t];
-    let sumB = 0, wB = 0, varMax = 0, threshold = 128;
-    const totalPixels = width * height;
-
-    for (let t = 0; t < 256; t++) {
-      wB += histogram[t];
-      if (wB === 0) continue;
-      const wF = totalPixels - wB;
-      if (wF === 0) break;
-      sumB += t * histogram[t];
-      const mB = sumB / wB;
-      const mF = (sum - sumB) / wF;
-      const varBetween = wB * wF * (mB - mF) * (mB - mF);
-      if (varBetween > varMax) {
-        varMax = varBetween;
-        threshold = t;
-      }
-    }
-
-    for (let i = 0; i < d.length; i += 4) {
-      const g = grays[i / 4];
-      const val = isLightBg ? (g < threshold ? 0 : 255) : (g > threshold ? 0 : 255);
-      d[i] = val;
-      d[i + 1] = val;
-      d[i + 2] = val;
-    }
-
     ctx.putImageData(imgData, 0, 0);
     return canvas.toDataURL('image/png');
   } catch (err) {
@@ -270,15 +145,13 @@ export function detectScriptFromText(text: string): { name: string; code: string
 /**
  * Clean OCR output from spurious watermark & noise artifacts
  */
-function cleanOcrText(raw: string): string {
+export function cleanOcrText(raw: string): string {
   if (!raw) return '';
   return raw
     .split('\n')
     .map(line => {
       let l = line.trim();
-      // Remove common stock watermark phrases like "alamy", "shutterstock", "istock", "getty"
       l = l.replace(/\b(alamy|alamystock|stock\s*photo|shutterstock|istock|getty\s*images|gmy|ple\s*io|io\s*a)\b/gi, '').trim();
-      // Remove lone copyright symbols and isolated punctuation noise
       l = l.replace(/[©®™~|^_`]{1,}/g, '').trim();
       return l;
     })
@@ -287,119 +160,234 @@ function cleanOcrText(raw: string): string {
     .trim();
 }
 
+interface CandidateEvaluation {
+  candidateName: string;
+  psmMode: PSM;
+  psmName: string;
+  cleanedText: string;
+  rawConfidence: number;
+  charCount: number;
+}
+
 /**
- * Perform real multi-pass OCR on any image source
+ * Perform Intelligent Multi-Stage OCR with Confidence-Based Retries & Diagnostics
  */
 export async function extractTextFromImage(
   imageSource: string | File | Blob,
   ocrLanguage: string = 'eng+hin',
-  onProgress?: (p: OCRProgress) => void
+  onProgress?: (p: OCRProgress) => void,
+  enableDebug: boolean = true,
+  groundTruthText?: string
 ): Promise<RealOCRResult> {
+  const startTime = Date.now();
+
   try {
-    onProgress?.({ status: 'Isolating text characters and color channels...', progress: 0.1 });
+    // STAGE 1: Image Quality Analysis
+    onProgress?.({ status: 'Analyzing image quality (blur, lighting, contrast)...', progress: 0.12 });
+    const qualityReport = await analyzeImageQuality(imageSource);
+    const imgElem = await loadImageElement(imageSource);
+    const originalWidth = imgElem.naturalWidth || imgElem.width || 800;
+    const originalHeight = imgElem.naturalHeight || imgElem.height || 600;
 
-    // Generate Chromatic Delta Preprocessed Image (Handles colored 3D letters, signs, cards, and headings)
-    const chromaticImg = await preprocessImageForOCR(imageSource, 'chromatic');
+    // STAGE 2: Smart Preprocessing Candidates (Safety rules applied)
+    onProgress?.({ status: 'Applying smart image enhancement & deskewing...', progress: 0.25 });
+    const candidates = await generateAdaptiveCandidates(imageSource, qualityReport);
 
-    onProgress?.({ status: 'Loading neural OCR engine...', progress: 0.25 });
+    // INTERCEPT: Unsupported Tribal Scripts without native Tesseract.js models
+    const isOlChiki = ocrLanguage === 'sat' || ocrLanguage === 'ol_chiki';
+    const isWarangChiti = ocrLanguage === 'hoc' || ocrLanguage === 'warang_chiti';
 
+    if (isOlChiki || isWarangChiti) {
+      const scriptName = isOlChiki ? 'Santali (Ol Chiki)' : 'Ho (Warang Chiti)';
+      onProgress?.({ status: `Preprocessing completed. Custom model required for ${scriptName}.`, progress: 1.0 });
+
+      return {
+        text: `[${scriptName} OCR Notice]\n\nImage preprocessing and enhancement completed successfully.\n\nHowever, a trained ${scriptName} neural OCR model is not yet installed in the client engine.\nStandard Tesseract.js does not contain open-source weights for this tribal script.\n\nTo recognize this document, please select English or Hindi if Latin/Devanagari text is present, or integrate a custom trained ONNX / LiteRT model.`,
+        detectedLanguage: scriptName,
+        confidence: 0,
+        lines: [],
+        wordsCount: 0,
+        qualityReport,
+        preprocessingMethod: candidates[0]?.description || 'Adaptive Threshold',
+        warnings: [
+          `${scriptName} recognition model is not yet installed.`,
+          'Standard Tesseract.js does not include trained weights for this tribal script.'
+        ],
+        isCustomModelRequired: true,
+        unsupportedMessage: `${scriptName} recognition model is not yet installed. Image enhancement is available, but a trained ${scriptName} OCR model is required for text recognition.`
+      };
+    }
+
+    // STAGE 3: Run Initial OCR with Cached Worker Pool
+    onProgress?.({ status: 'Running OCR engine...', progress: 0.40 });
     const lang = ocrLanguage === 'hin' ? 'hin' : (ocrLanguage === 'eng' ? 'eng' : 'eng+hin');
-    const worker = await createWorker(lang, 1, {
-      logger: (m) => {
-        if (m.status === 'recognizing text') {
-          onProgress?.({
-            status: `Recognizing text (${Math.round((m.progress || 0) * 100)}%)...`,
-            progress: 0.3 + (m.progress || 0) * 0.65
+
+    const evaluations: CandidateEvaluation[] = [];
+    let retriesPerformed = 0;
+
+    const primaryCandidate = candidates[0];
+    const initialPsm = PSM.AUTO;
+
+    try {
+      const r1 = await recognizeWithWorker(
+        primaryCandidate.dataUrl,
+        lang,
+        initialPsm,
+        (p) => onProgress?.({ status: `Recognizing text (${Math.round(p * 100)}%)...`, progress: 0.40 + p * 0.35 })
+      );
+      const c1 = cleanOcrText(r1.text);
+      evaluations.push({
+        candidateName: primaryCandidate.description,
+        psmMode: initialPsm,
+        psmName: 'PSM 3 (AUTO)',
+        cleanedText: c1,
+        rawConfidence: r1.confidence,
+        charCount: c1.replace(/\s+/g, '').length
+      });
+    } catch (err) {
+      console.warn('Initial OCR candidate failed:', err);
+    }
+
+    const primaryResult = evaluations[0];
+    const needsRetry = !primaryResult || primaryResult.charCount < 4 || primaryResult.rawConfidence < OCR_RETRY_THRESHOLD;
+
+    // STAGE 4: Confidence-Based Retries
+    if (needsRetry && retriesPerformed < MAX_OCR_RETRIES) {
+      retriesPerformed++;
+      onProgress?.({ status: 'Low confidence detected. Testing PSM 6 (Single Block)...', progress: 0.78 });
+
+      try {
+        const rBlock = await recognizeWithWorker(primaryCandidate.dataUrl, lang, PSM.SINGLE_BLOCK);
+        const cBlock = cleanOcrText(rBlock.text);
+        evaluations.push({
+          candidateName: `${primaryCandidate.description} (Block Mode)`,
+          psmMode: PSM.SINGLE_BLOCK,
+          psmName: 'PSM 6 (SINGLE_BLOCK)',
+          cleanedText: cBlock,
+          rawConfidence: rBlock.confidence,
+          charCount: cBlock.replace(/\s+/g, '').length
+        });
+      } catch (err) {
+        console.warn('PSM 6 retry failed:', err);
+      }
+
+      if (candidates.length > 1) {
+        retriesPerformed++;
+        const altCandidate = candidates[1];
+        onProgress?.({ status: `Testing alternative strategy: ${altCandidate.name}...`, progress: 0.88 });
+
+        try {
+          const rAlt = await recognizeWithWorker(altCandidate.dataUrl, lang, PSM.AUTO);
+          const cAlt = cleanOcrText(rAlt.text);
+          evaluations.push({
+            candidateName: altCandidate.description,
+            psmMode: PSM.AUTO,
+            psmName: 'PSM 3 (AUTO)',
+            cleanedText: cAlt,
+            rawConfidence: rAlt.confidence,
+            charCount: cAlt.replace(/\s+/g, '').length
           });
+        } catch (err) {
+          console.warn('Alternative candidate retry failed:', err);
         }
       }
-    });
+    }
 
-    onProgress?.({ status: 'Analyzing character shapes...', progress: 0.45 });
-
-    // Pass 1: Run with PSM 6 (single uniform block / word / sentence) on Chromatic preprocessed image
-    await worker.setParameters({
-      tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
-    });
-
-    let ret = await worker.recognize(chromaticImg);
-    let cleaned = cleanOcrText(ret.data.text || '');
-
-    // Pass 2: If Pass 1 is empty or short noise, try PSM AUTO (PSM 3)
-    if (!cleaned || cleaned.length < 2) {
-      onProgress?.({ status: 'Applying adaptive text segmentation...', progress: 0.65 });
-      await worker.setParameters({
-        tessedit_pageseg_mode: PSM.AUTO,
-      });
-      const ret2 = await worker.recognize(chromaticImg);
-      const cleaned2 = cleanOcrText(ret2.data.text || '');
-      if (cleaned2 && cleaned2.length >= cleaned.length) {
-        ret = ret2;
-        cleaned = cleaned2;
+    // STAGE 5: Best Candidate Selection
+    let best = evaluations[0];
+    for (const ev of evaluations) {
+      if (!best) {
+        best = ev;
+        continue;
+      }
+      if (ev.charCount > 2 && (ev.rawConfidence > best.rawConfidence || best.charCount < 2)) {
+        best = ev;
       }
     }
 
-    // Pass 3: If still poor, try Otsu Binarization (for standard scanned documents/receipts)
-    if (!cleaned || (ret.data.confidence && ret.data.confidence < 50)) {
-      onProgress?.({ status: 'Scanning document structure...', progress: 0.8 });
-      const binarizedImg = await preprocessImageForOCR(imageSource, 'threshold');
-      const ret3 = await worker.recognize(binarizedImg);
-      const cleaned3 = cleanOcrText(ret3.data.text || '');
-      if (cleaned3 && (ret3.data.confidence || 0) > (ret.data.confidence || 0)) {
-        ret = ret3;
-        cleaned = cleaned3;
-      }
-    }
-
-    // Pass 4: Fallback to raw original if needed
-    if (!cleaned) {
-      const ret4 = await worker.recognize(imageSource);
-      const cleaned4 = cleanOcrText(ret4.data.text || '');
-      if (cleaned4) {
-        ret = ret4;
-        cleaned = cleaned4;
-      }
-    }
-
-    await worker.terminate();
-
-    const cleanLines = cleaned
+    const finalText = best ? best.cleanedText : '';
+    const rawEngineConfidence = best ? Math.round(best.rawConfidence) : 0;
+    const cleanLines = finalText
       .split('\n')
       .map(l => l.trim())
       .filter(l => l.length > 0);
 
-    const detected = detectScriptFromText(cleaned);
-    const confidence = Math.min(0.99, Math.max(0.75, (ret.data.confidence || 90) / 100));
+    const detected = detectScriptFromText(finalText);
+    const totalDurationMs = Date.now() - startTime;
+
+    // Ground Truth Evaluation (if ground truth is supplied)
+    let groundTruthAccuracy: { cer: number; wer: number; accuracyPercent: number } | undefined;
+    if (groundTruthText) {
+      groundTruthAccuracy = evaluateOCRAccuracy(finalText, groundTruthText);
+    }
+
+    // Debug Report Construction
+    let debugInfo: OCRDebugInfo | undefined;
+    if (enableDebug) {
+      debugInfo = {
+        originalDimensions: { width: originalWidth, height: originalHeight },
+        preprocessedDimensions: { width: originalWidth, height: originalHeight },
+        qualityReport,
+        selectedStrategy: best?.candidateName || primaryCandidate.description,
+        inversionApplied: qualityReport.isInverted,
+        deskewApplied: Math.abs(qualityReport.estimatedSkewAngle) >= 2,
+        skewAngle: qualityReport.estimatedSkewAngle,
+        ocrLanguage: lang,
+        psmMode: best?.psmName || 'PSM 3 (AUTO)',
+        rawConfidence: rawEngineConfidence,
+        charCount: finalText.replace(/\s+/g, '').length,
+        processingTimeMs: totalDurationMs,
+        retryCount: retriesPerformed,
+        evaluatedCandidates: evaluations.map(e => ({
+          name: e.candidateName,
+          psm: e.psmName,
+          confidence: e.rawConfidence,
+          chars: e.charCount
+        })),
+        cer: groundTruthAccuracy?.cer,
+        wer: groundTruthAccuracy?.wer,
+        accuracyPercent: groundTruthAccuracy?.accuracyPercent
+      };
+    }
 
     onProgress?.({ status: 'OCR Extraction Complete!', progress: 1.0 });
 
-    if (!cleaned) {
+    if (!finalText) {
       return {
-        text: 'No clear text was detected. Please ensure the image contains visible letters or words.',
+        text: 'No clear text was detected in the image. Please ensure the document is clear, well-lit, and in focus.',
         detectedLanguage: 'None Detected',
         confidence: 0,
         lines: [],
-        wordsCount: 0
+        wordsCount: 0,
+        qualityReport,
+        preprocessingMethod: best?.candidateName || 'None',
+        warnings: qualityReport.warnings,
+        debugInfo
       };
     }
 
     return {
       text: cleanLines.join('\n'),
       detectedLanguage: detected.name,
-      confidence: Math.round(confidence * 100) / 100,
+      confidence: rawEngineConfidence,
       lines: cleanLines,
-      wordsCount: cleaned.split(/\s+/).filter(Boolean).length
+      wordsCount: finalText.split(/\s+/).filter(Boolean).length,
+      qualityReport,
+      preprocessingMethod: best ? best.candidateName : 'High-Contrast Grayscale',
+      warnings: qualityReport.warnings,
+      debugInfo
     };
   } catch (error) {
-    console.error('Tesseract OCR error:', error);
-    onProgress?.({ status: 'OCR fallback analysis...', progress: 0.8 });
+    console.error('OCR Processing Error:', error);
+    onProgress?.({ status: 'Error reading image', progress: 1.0 });
 
     return {
       text: 'Text extraction encountered an issue reading this image. Please try uploading a sharp PNG/JPG image.',
       detectedLanguage: 'Error',
       confidence: 0,
       lines: [],
-      wordsCount: 0
+      wordsCount: 0,
+      warnings: ['An unexpected error occurred during OCR recognition.']
     };
   }
 }

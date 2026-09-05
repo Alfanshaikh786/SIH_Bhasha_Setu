@@ -87,9 +87,13 @@ async function buildDatabase() {
     const category = (cols[7] || 'General').trim();
     const verified = (cols[8] || 'Yes').trim();
 
-    // Derived Ho and Mundari cognates / transliterations for regional tribal dialect assistance
-    const ho = santali; // Ho shares North Munda roots with Ol Chiki / Varang Kshiti pronunciation
-    const mundari = santali; // Mundari shares core Austroasiatic lexical cognates
+    // IMPORTANT: Ho and Mundari translations are NOT derived by copying Santali.
+    // The source CSV (Santhali-Words.csv) contains Santali data only.
+    // No authentic Ho (Warang Chiti) or Mundari dataset is available at build time.
+    // Ho and Mundari columns are stored as empty strings.
+    // Translation for these languages requires dedicated custom models (future: ONNX/LiteRT).
+    const ho = '';
+    const mundari = '';
 
     if (english || hindi || santali) {
       insertStmt.run([rowId, english, hindi, santali, santaliRoman, ho, mundari, category, verified]);
