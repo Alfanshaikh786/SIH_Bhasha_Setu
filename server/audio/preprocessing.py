@@ -5,7 +5,7 @@ Audio Preprocessing, Resampling, Normalization, and VAD for Bhasha Setu ASR
 import io
 from typing import List, Tuple
 import numpy as np
-import soundfile as sf
+import soundfile as sf  # type: ignore
 from scipy import signal
 
 
@@ -53,7 +53,9 @@ def resample_audio(audio: np.ndarray, orig_sr: int, target_sr: int = TARGET_SAMP
 
     num_target_samples = int(round(len(audio) * float(target_sr) / float(orig_sr)))
     resampled = signal.resample(audio, num_target_samples)
-    return resampled.astype(np.float32)
+    if isinstance(resampled, tuple):
+        resampled = resampled[0]
+    return np.asarray(resampled, dtype=np.float32)
 
 
 def normalize_amplitude(audio: np.ndarray, target_peak: float = 0.95) -> np.ndarray:

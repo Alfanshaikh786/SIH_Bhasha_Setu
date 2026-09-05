@@ -33,7 +33,7 @@ class WhisperASREngine(ASREngine):
 
     def _ensure_loaded(self):
         if self._model is None:
-            from faster_whisper import WhisperModel
+            from faster_whisper import WhisperModel  # type: ignore
             self._model = WhisperModel(
                 self._model_size,
                 device=self._device,
@@ -78,6 +78,9 @@ class WhisperASREngine(ASREngine):
         # Ensure float32 format
         if audio_data.dtype != np.float32:
             audio_data = audio_data.astype(np.float32)
+
+        if self._model is None:
+            raise RuntimeError("Whisper model failed to load.")
 
         # Transcribe
         segments_gen, info = self._model.transcribe(

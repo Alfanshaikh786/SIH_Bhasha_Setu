@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.abspath("."))
 
 import requests
 import numpy as np
-import soundfile as sf
+import soundfile as sf  # type: ignore
 
 BASE_URL = "http://127.0.0.1:5000/api/asr"
 

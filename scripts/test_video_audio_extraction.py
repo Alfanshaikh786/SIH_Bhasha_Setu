@@ -15,11 +15,12 @@ from pathlib import Path
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-if hasattr(sys.stdout, 'reconfigure'):
-    sys.stdout.reconfigure(encoding='utf-8')  # type: ignore
+reconfigure_stdout = getattr(sys.stdout, "reconfigure", None)
+if callable(reconfigure_stdout):
+    reconfigure_stdout(encoding="utf-8")
 
 from server.video.ffmpeg_utils import get_ffmpeg_binary, probe_media, extract_audio_to_wav
-import soundfile as sf
+import soundfile as sf  # type: ignore
 
 
 def run_tests():

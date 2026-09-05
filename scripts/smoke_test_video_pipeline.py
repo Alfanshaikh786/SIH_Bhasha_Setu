@@ -15,8 +15,9 @@ from pathlib import Path
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")
+reconfigure_stdout = getattr(sys.stdout, "reconfigure", None)
+if callable(reconfigure_stdout):
+    reconfigure_stdout(encoding="utf-8")
 
 
 import tempfile
@@ -161,6 +162,10 @@ def run_smoke_test():
             if st in ["COMPLETED", "FAILED"]:
                 final_job = job_data
                 break
+
+        if final_job is None:
+            print(f"ERROR: Pipeline timed out waiting for job completion after {poll_count} polling attempts.")
+            sys.exit(1)
 
         total_time = round(time.time() - t0, 2)
         print(f"\nPipeline finished in {total_time}s with status: {final_job['status']}")

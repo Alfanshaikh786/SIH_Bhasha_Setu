@@ -20,7 +20,7 @@ def get_santali_model():
     """
     global _model_instance
     if _model_instance is None:
-        import onnx_asr
+        import onnx_asr  # type: ignore
         model_id = "OpenVoiceOS/ai4bharat-indicconformer-sat-onnx"
         _model_instance = onnx_asr.load_model(model_id, quantization="int8")
     return _model_instance
@@ -83,19 +83,23 @@ class SantaliIndicConformerASREngine(ASREngine):
         full_text_parts = []
         confidences = []
 
+        if self._model is None:
+            raise RuntimeError("Santali IndicConformer model failed to initialize.")
+
         ts_adapter = self._model.with_timestamps()
 
         for seg_idx, (s_start, s_end, s_audio) in enumerate(raw_segments):
             if len(s_audio) < int(sample_rate * 0.15):
                 continue
 
+            ts_res = None
             try:
                 ts_res = ts_adapter.recognize(s_audio, sample_rate=sample_rate)
                 seg_text = ts_res.text.strip()
-            except Exception as e:
+            except Exception:
                 seg_text = ""
 
-            if not seg_text:
+            if not seg_text or ts_res is None:
                 continue
 
             # Calculate acoustic confidence from logprobs if available

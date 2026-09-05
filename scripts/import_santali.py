@@ -13,8 +13,9 @@ import psycopg2
 from psycopg2 import sql
 
 # Ensure standard output supports UTF-8 on Windows
-if hasattr(sys.stdout, 'reconfigure'):
-    sys.stdout.reconfigure(encoding='utf-8')  # type: ignore
+reconfigure_stdout = getattr(sys.stdout, "reconfigure", None)
+if callable(reconfigure_stdout):
+    reconfigure_stdout(encoding="utf-8")
 
 # 1. Load environment variables
 BASE_DIR = Path(__file__).resolve().parent.parent

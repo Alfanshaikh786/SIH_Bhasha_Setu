@@ -81,13 +81,14 @@ async def transcribe_audio(
         audio_array, duration_sec = preprocess_audio_pipeline(audio_bytes)
 
         if duration_sec < 0.2:
+            engine = asr_router.get_engine("sat")
             return {
                 "text": "",
                 "language": source_lang,
                 "duration_sec": round(duration_sec, 3),
                 "processing_time_ms": 0.0,
                 "real_time_factor": 0.0,
-                "model_name": asr_router.get_engine("sat").engine_name,
+                "model_name": engine.engine_name if engine else "Unavailable",
                 "segments": [],
                 "asr_confidence": None,
                 "needs_review": True,
@@ -143,6 +144,9 @@ async def websocket_asr_stream(websocket: WebSocket):
     await websocket.accept()
     audio_buffer = bytearray()
     engine = asr_router.get_engine("sat")
+    if engine is None:
+        await websocket.close(code=1011, reason="Santali ASR engine unavailable")
+        return
 
     try:
         while True:

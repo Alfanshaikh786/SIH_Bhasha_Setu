@@ -28,6 +28,12 @@ async def create_subtitle_job(
     Submits a video file for end-to-end subtitle generation.
     Returns job_id and status: QUEUED.
     """
+    if not file.filename:
+        raise HTTPException(
+            status_code=400,
+            detail="No filename provided in upload."
+        )
+
     ext = Path(file.filename).suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(

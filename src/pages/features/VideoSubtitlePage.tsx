@@ -38,7 +38,7 @@ export const VideoSubtitlePage: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Clean up object URLs on unmount
   useEffect(() => {
