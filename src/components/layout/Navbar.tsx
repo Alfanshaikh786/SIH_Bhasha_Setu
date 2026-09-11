@@ -46,7 +46,6 @@ export const Navbar: React.FC = () => {
   const [offlineModalOpen, setOfflineModalOpen] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [offlineActivating, setOfflineActivating] = useState(false);
-  const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
   const location = useLocation();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -458,58 +457,6 @@ export const Navbar: React.FC = () => {
 
             {/* Right Action CTA Buttons */}
             <div className="hidden md:flex items-center gap-2.5">
-              {/* Interactive Status Indicator */}
-              <div className="relative">
-                <button
-                  onClick={() => setStatusPopoverOpen(!statusPopoverOpen)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#14532d] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition shadow-xs cursor-pointer"
-                  title="View Offline & Neural Engine Status"
-                >
-                  <span className="w-2 h-2 rounded-full bg-[#249144] animate-pulse" />
-                  <span>OFFLINE READY</span>
-                </button>
-
-                {statusPopoverOpen && (
-                  <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-3xl border border-slate-200 shadow-2xl p-5 text-xs text-slate-700 z-50 animate-in fade-in space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                      <span className="font-bold text-slate-900 flex items-center gap-1.5 text-sm">
-                        <ShieldCheck className="w-4 h-4 text-[#249144]" /> System Capabilities
-                      </span>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-[#14532d] text-[10px] font-bold">
-                        100% Active
-                      </span>
-                    </div>
-
-                    <div className="space-y-2 text-[11px]">
-                      <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                        <span className="font-semibold text-slate-800">Santali Neural ASR</span>
-                        <span className="text-emerald-700 font-bold">IndicConformer ONNX</span>
-                      </div>
-                      <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                        <span className="font-semibold text-slate-800">Verified Database</span>
-                        <span className="text-emerald-700 font-bold">6,780 Verified Rows</span>
-                      </div>
-                      <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                        <span className="font-semibold text-slate-800">Voice Synthesis (TTS)</span>
-                        <span className="text-emerald-700 font-bold">On-Device Engine</span>
-                      </div>
-                      <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                        <span className="font-semibold text-slate-800">Local Lessons & History</span>
-                        <span className="text-emerald-700 font-bold">On-Device Storage</span>
-                      </div>
-                      <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                        <span className="font-semibold text-slate-800">Cloud Web Bridge</span>
-                        <span className="text-slate-500 font-bold">Active on miss</span>
-                      </div>
-                    </div>
-
-                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[10px] text-amber-900 leading-normal">
-                      <strong>Responsible AI Notice:</strong> Mundari & Ho speech models are in preparation (Phase 2 & 3). Fake recognition is strictly disabled.
-                    </div>
-                  </div>
-                )}
-              </div>
-
               <button
                 onClick={() => {
                   window.dispatchEvent(new CustomEvent('trigger-pwa-install'));
