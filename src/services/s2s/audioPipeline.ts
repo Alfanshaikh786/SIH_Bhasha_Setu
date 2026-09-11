@@ -24,9 +24,11 @@ export class S2SAudioPipeline {
   private silenceFrames = 0;
   private activeFrames = 0;
   private lastRms = 0;
+  private baselineNoiseRms = 0.005; // Running ambient noise floor
 
-  private static readonly VAD_RMS_THRESHOLD = 0.012; // Energy threshold for active speech
-  private static readonly SILENCE_FRAMES_LIMIT = 40;  // ~3.5s of consecutive silence
+  private static readonly VAD_RMS_FLOOR = 0.012;         // Baseline minimum threshold for speech
+  private static readonly VAD_NOISE_FLOOR_FACTOR = 2.0;   // Minimum dynamic headroom above noise floor
+  private static readonly SILENCE_FRAMES_LIMIT = 40;     // ~3.5s of consecutive silence
 
   /**
    * Checks if user has granted microphone permission without starting full stream.
@@ -51,15 +53,22 @@ export class S2SAudioPipeline {
     this.stop();
 
     try {
-      this.mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          sampleRate: 16000,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      });
+      try {
+        // Preferred standard: 16 kHz mono with native WebRTC DSP
+        this.mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            sampleRate: 16000,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+      } catch (constraintErr) {
+        // Graceful fallback for older mobile browsers / webviews that reject complex constraints
+        console.warn('[S2SAudioPipeline] Complex audio constraints unsupported, falling back to default audio capture:', constraintErr);
+        this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
 
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       this.audioContext = new AudioContextClass({ sampleRate: 16000 });
@@ -88,7 +97,14 @@ export class S2SAudioPipeline {
         const rms = Math.sqrt(sumSq / input.length);
         this.lastRms = rms;
 
-        const isSpeaking = rms >= S2SAudioPipeline.VAD_RMS_THRESHOLD;
+        // Adapt running noise floor during quiet periods
+        if (rms < this.baselineNoiseRms * 1.5 || rms < 0.02) {
+          this.baselineNoiseRms = this.baselineNoiseRms * 0.95 + rms * 0.05;
+        }
+
+        // Dynamic effective threshold: at least 0.012 or 2.0x current ambient noise floor
+        const effectiveThreshold = this.getEffectiveThreshold();
+        const isSpeaking = rms >= effectiveThreshold;
         if (isSpeaking) {
           this.activeFrames++;
           this.silenceFrames = 0;
@@ -107,6 +123,7 @@ export class S2SAudioPipeline {
       this.isCapturing = true;
       this.silenceFrames = 0;
       this.activeFrames = 0;
+      this.baselineNoiseRms = 0.005;
     } catch (err: any) {
       this.stop();
       options.onError?.(err);
@@ -119,6 +136,7 @@ export class S2SAudioPipeline {
    */
   public stop(): void {
     this.isCapturing = false;
+    this.baselineNoiseRms = 0.005;
 
     if (this.processor) {
       try {
@@ -154,16 +172,27 @@ export class S2SAudioPipeline {
     return this.lastRms;
   }
 
+  public getNoiseFloorRms(): number {
+    return this.baselineNoiseRms;
+  }
+
+  public getEffectiveThreshold(): number {
+    return Math.max(S2SAudioPipeline.VAD_RMS_FLOOR, this.baselineNoiseRms * S2SAudioPipeline.VAD_NOISE_FLOOR_FACTOR);
+  }
+
   public hasSpoken(): boolean {
     return this.activeFrames >= 2;
   }
 
-  public getVadStats(): { activeFrames: number; silenceFrames: number; lastRms: number; isSpeaking: boolean } {
+  public getVadStats(): { activeFrames: number; silenceFrames: number; lastRms: number; isSpeaking: boolean; noiseFloorRms: number; effectiveThreshold: number } {
+    const effectiveThreshold = this.getEffectiveThreshold();
     return {
       activeFrames: this.activeFrames,
       silenceFrames: this.silenceFrames,
       lastRms: this.lastRms,
-      isSpeaking: this.lastRms >= S2SAudioPipeline.VAD_RMS_THRESHOLD
+      isSpeaking: this.lastRms >= effectiveThreshold,
+      noiseFloorRms: this.baselineNoiseRms,
+      effectiveThreshold
     };
   }
 }
