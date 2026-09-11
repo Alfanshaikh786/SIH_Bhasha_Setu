@@ -19,7 +19,11 @@ import {
   Info,
   Cpu,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Edit3,
+  AlertTriangle,
+  X,
+  ShieldCheck
 } from 'lucide-react';
 import { SUPPORTED_LANGUAGES } from '../../data/languages';
 import { translateText, playTextSpeech } from '../../services/translationService';
@@ -31,6 +35,8 @@ import {
   ASRSegment,
   ASRStatusResponse 
 } from '../../services/asrService';
+import { AudioQualityMonitor, AudioQualityStatus } from '../../services/audioQualityService';
+import { saveHumanCorrection } from '../../services/humanCorrectionService';
 
 interface TranscribeSegment {
   id: string;
@@ -46,6 +52,7 @@ interface TranscribeSegment {
   translationConfidence?: number | null;
   lexiconMatch?: boolean;
   needsReview?: boolean;
+  confidenceTier?: 'verified' | 'dataset' | 'fallback' | 'needs_review';
 }
 
 export const SpeechToTextPage: React.FC = () => {
@@ -61,6 +68,12 @@ export const SpeechToTextPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [asrStatus, setAsrStatus] = useState<ASRStatusResponse | null>(null);
   const [realTimeFactor, setRealTimeFactor] = useState<number | null>(null);
+  const [audioQuality, setAudioQuality] = useState<AudioQualityStatus | null>(null);
+
+  // Human Correction Modal State
+  const [editingSegment, setEditingSegment] = useState<TranscribeSegment | null>(null);
+  const [editNativeText, setEditNativeText] = useState('');
+  const [editTransText, setEditTransText] = useState('');
 
   // Transcript segments
   const [transcripts, setTranscripts] = useState<TranscribeSegment[]>([]);
@@ -70,6 +83,7 @@ export const SpeechToTextPage: React.FC = () => {
   const recognitionRef = useRef<any>(null);
   const streamerRef = useRef<MicrophoneStreamer | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioMonitorRef = useRef<AudioQualityMonitor | null>(null);
 
   const sourceLangObj = SUPPORTED_LANGUAGES.find(l => l.code === sourceLang) || SUPPORTED_LANGUAGES[0];
   const targetLangObj = SUPPORTED_LANGUAGES.find(l => l.code === targetLang) || SUPPORTED_LANGUAGES[SUPPORTED_LANGUAGES.length - 1];
@@ -77,6 +91,15 @@ export const SpeechToTextPage: React.FC = () => {
   // Poll ASR status on mount
   useEffect(() => {
     checkASRStatus().then(status => setAsrStatus(status)).catch(() => {});
+  }, []);
+
+  // Cleanup audio monitor on unmount
+  useEffect(() => {
+    return () => {
+      if (audioMonitorRef.current) {
+        audioMonitorRef.current.stop();
+      }
+    };
   }, []);
 
   // Timer for recording
@@ -140,14 +163,25 @@ export const SpeechToTextPage: React.FC = () => {
   const handleStartRecording = async () => {
     setErrorMessage(null);
 
-    // Phase 1 Scope Check
+    // Responsible AI Scope Guardrails (Mundari and Ho must NOT be fabricated)
     if (sourceLang === 'unr' || sourceLang === 'mundari') {
-      setErrorMessage('Mundari ASR is scheduled for Phase 2. This phase supports Santali (sat), Hindi (hin), and English (eng).');
+      setErrorMessage('Mundari ASR is currently under development. This language will be enabled after validated training and testing.');
       return;
     }
     if (sourceLang === 'hoc' || sourceLang === 'ho') {
-      setErrorMessage('Ho ASR is scheduled for Phase 3. This phase supports Santali (sat), Hindi (hin), and English (eng).');
+      setErrorMessage('Ho ASR is currently under development. This language will be enabled after validated training and testing.');
       return;
+    }
+
+    // Initialize real-time audio quality monitoring
+    try {
+      const monitor = new AudioQualityMonitor((quality) => {
+        setAudioQuality(quality);
+      });
+      await monitor.start();
+      audioMonitorRef.current = monitor;
+    } catch (e) {
+      console.warn('Audio monitor start error:', e);
     }
 
     // --- Santali: Use Neural IndicConformer via WebSocket Streamer ---
@@ -174,6 +208,15 @@ export const SpeechToTextPage: React.FC = () => {
               }
             }
 
+            const isNeedsReview = seg.needs_review || (seg.asr_confidence !== null && seg.asr_confidence !== undefined && seg.asr_confidence < 0.60);
+            const tier = isNeedsReview 
+              ? 'needs_review' 
+              : isLexicon || (seg.asr_confidence && seg.asr_confidence >= 0.85)
+              ? 'verified'
+              : (seg.asr_confidence && seg.asr_confidence >= 0.70)
+              ? 'dataset'
+              : 'fallback';
+
             const newSeg: TranscribeSegment = {
               id: seg.id || `mic-${Date.now()}`,
               time: `${Math.floor(seg.start_sec / 60).toString().padStart(2, '0')}:${Math.floor(seg.start_sec % 60).toString().padStart(2, '0')} - ${Math.floor(seg.end_sec / 60).toString().padStart(2, '0')}:${Math.floor(seg.end_sec % 60).toString().padStart(2, '0')}`,
@@ -187,7 +230,8 @@ export const SpeechToTextPage: React.FC = () => {
               asrConfidence: seg.asr_confidence,
               translationConfidence: transConf,
               lexiconMatch: isLexicon,
-              needsReview: seg.needs_review
+              needsReview: isNeedsReview,
+              confidenceTier: tier
             };
 
             setTranscripts(prev => [newSeg, ...prev]);
@@ -198,6 +242,11 @@ export const SpeechToTextPage: React.FC = () => {
             console.warn('ASR Stream error:', err);
             setErrorMessage(`Santali Neural ASR backend notice: ${err}. Ensure backend is running at http://127.0.0.1:5000.`);
             setIsRecording(false);
+            if (audioMonitorRef.current) {
+              audioMonitorRef.current.stop();
+              audioMonitorRef.current = null;
+            }
+            setAudioQuality(null);
           }
         });
 
@@ -207,6 +256,11 @@ export const SpeechToTextPage: React.FC = () => {
       } catch (err: any) {
         setErrorMessage(`Failed to start Santali microphone capture: ${err?.message || err}`);
         setIsRecording(false);
+        if (audioMonitorRef.current) {
+          audioMonitorRef.current.stop();
+          audioMonitorRef.current = null;
+        }
+        setAudioQuality(null);
       }
       return;
     }
@@ -217,6 +271,10 @@ export const SpeechToTextPage: React.FC = () => {
 
     if (!SpeechRecognitionClass) {
       setErrorMessage('Microphone speech recognition is not supported in this browser. Please try using Google Chrome or Microsoft Edge.');
+      if (audioMonitorRef.current) {
+        audioMonitorRef.current.stop();
+        audioMonitorRef.current = null;
+      }
       return;
     }
 
@@ -239,6 +297,7 @@ export const SpeechToTextPage: React.FC = () => {
               setIsProcessing(true);
               const trans = await translateText(spoken, sourceLang, targetLang);
               const curSec = recordingSeconds;
+              const isLexicon = trans.reliability === 'verified';
               const newSegment: TranscribeSegment = {
                 id: `rec-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
                 time: `00:${Math.max(0, curSec - 4).toString().padStart(2, '0')} - 00:${curSec.toString().padStart(2, '0')}`,
@@ -249,10 +308,11 @@ export const SpeechToTextPage: React.FC = () => {
                 translation: trans.targetText,
                 sourceLang,
                 targetLang,
-                asrConfidence: null, // Honest: browser Web Speech doesn't give verified acoustic logprob
-                translationConfidence: trans.reliability === 'verified' ? 0.98 : trans.reliability === 'dataset' ? 0.92 : 0.85,
-                lexiconMatch: trans.reliability === 'verified',
-                needsReview: false
+                asrConfidence: null,
+                translationConfidence: isLexicon ? 0.98 : trans.reliability === 'dataset' ? 0.92 : 0.85,
+                lexiconMatch: isLexicon,
+                needsReview: false,
+                confidenceTier: isLexicon ? 'verified' : 'dataset'
               };
               setTranscripts(prev => [newSegment, ...prev]);
               setInterimText('');
@@ -270,10 +330,20 @@ export const SpeechToTextPage: React.FC = () => {
       recognition.onerror = (e: any) => {
         console.warn('Speech recognition error:', e);
         setIsRecording(false);
+        if (audioMonitorRef.current) {
+          audioMonitorRef.current.stop();
+          audioMonitorRef.current = null;
+        }
+        setAudioQuality(null);
       };
 
       recognition.onend = () => {
         setIsRecording(false);
+        if (audioMonitorRef.current) {
+          audioMonitorRef.current.stop();
+          audioMonitorRef.current = null;
+        }
+        setAudioQuality(null);
       };
 
       recognitionRef.current = recognition;
@@ -281,12 +351,22 @@ export const SpeechToTextPage: React.FC = () => {
     } catch (e) {
       console.warn('Speech recognition init error:', e);
       setIsRecording(false);
+      if (audioMonitorRef.current) {
+        audioMonitorRef.current.stop();
+        audioMonitorRef.current = null;
+      }
+      setAudioQuality(null);
     }
   };
 
   const handleStopRecording = () => {
     setIsRecording(false);
     setInterimText('');
+    if (audioMonitorRef.current) {
+      audioMonitorRef.current.stop();
+      audioMonitorRef.current = null;
+    }
+    setAudioQuality(null);
     if (streamerRef.current) {
       streamerRef.current.stop();
       streamerRef.current = null;
@@ -297,7 +377,7 @@ export const SpeechToTextPage: React.FC = () => {
     }
   };
 
-  // Handle Audio File Upload & Transcription (Real Audio Processing Pipeline)
+  // Handle Audio File Upload & Transcription
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -305,14 +385,14 @@ export const SpeechToTextPage: React.FC = () => {
     setErrorMessage(null);
     setIsProcessing(true);
 
-    // Phase 1 Scope Check
+    // Responsible AI Scope Guardrails (Mundari and Ho must NOT be fabricated)
     if (sourceLang === 'unr' || sourceLang === 'mundari') {
-      setErrorMessage('Mundari ASR is scheduled for Phase 2. This phase supports Santali (sat).');
+      setErrorMessage('Mundari ASR is currently under development. This language will be enabled after validated training and testing.');
       setIsProcessing(false);
       return;
     }
     if (sourceLang === 'hoc' || sourceLang === 'ho') {
-      setErrorMessage('Ho ASR is scheduled for Phase 3. This phase supports Santali (sat).');
+      setErrorMessage('Ho ASR is currently under development. This language will be enabled after validated training and testing.');
       setIsProcessing(false);
       return;
     }
@@ -327,21 +407,33 @@ export const SpeechToTextPage: React.FC = () => {
         return;
       }
 
-      const newSegments: TranscribeSegment[] = result.segments.map((s, idx) => ({
-        id: s.id || `upload-${Date.now()}-${idx}`,
-        time: `${Math.floor(s.start_sec / 60).toString().padStart(2, '0')}:${Math.floor(s.start_sec % 60).toString().padStart(2, '0')} - ${Math.floor(s.end_sec / 60).toString().padStart(2, '0')}:${Math.floor(s.end_sec % 60).toString().padStart(2, '0')}`,
-        startSec: s.start_sec,
-        endSec: s.end_sec,
-        speaker: s.speaker || `Speaker ${1 + (idx % 2)}`,
-        text: s.text,
-        translation: s.translation,
-        sourceLang,
-        targetLang,
-        asrConfidence: s.asr_confidence,
-        translationConfidence: s.translation_confidence,
-        lexiconMatch: s.lexicon_match,
-        needsReview: s.needs_review
-      }));
+      const newSegments: TranscribeSegment[] = result.segments.map((s, idx) => {
+        const isNeedsRev = s.needs_review || (s.asr_confidence !== null && s.asr_confidence !== undefined && s.asr_confidence < 0.60);
+        const tier = isNeedsRev
+          ? 'needs_review'
+          : s.lexicon_match || (s.asr_confidence && s.asr_confidence >= 0.85)
+          ? 'verified'
+          : (s.asr_confidence && s.asr_confidence >= 0.70)
+          ? 'dataset'
+          : 'fallback';
+
+        return {
+          id: s.id || `upload-${Date.now()}-${idx}`,
+          time: `${Math.floor(s.start_sec / 60).toString().padStart(2, '0')}:${Math.floor(s.start_sec % 60).toString().padStart(2, '0')} - ${Math.floor(s.end_sec / 60).toString().padStart(2, '0')}:${Math.floor(s.end_sec % 60).toString().padStart(2, '0')}`,
+          startSec: s.start_sec,
+          endSec: s.end_sec,
+          speaker: s.speaker || `Speaker ${1 + (idx % 2)}`,
+          text: s.text,
+          translation: s.translation,
+          sourceLang,
+          targetLang,
+          asrConfidence: s.asr_confidence,
+          translationConfidence: s.translation_confidence,
+          lexiconMatch: s.lexicon_match,
+          needsReview: isNeedsRev,
+          confidenceTier: tier
+        };
+      });
 
       setTranscripts(prev => [...newSegments, ...prev]);
     } catch (err: any) {
@@ -353,6 +445,57 @@ export const SpeechToTextPage: React.FC = () => {
         fileInputRef.current.value = '';
       }
     }
+  };
+
+  // Human Correction Handlers
+  const handleOpenEdit = (segment: TranscribeSegment) => {
+    setEditingSegment(segment);
+    setEditNativeText(segment.text);
+    setEditTransText(segment.translation || '');
+  };
+
+  const handleSaveCorrection = () => {
+    if (!editingSegment) return;
+
+    saveHumanCorrection({
+      rawText: editingSegment.text,
+      correctedText: editNativeText,
+      sourceLang: editingSegment.sourceLang,
+      targetLang: editingSegment.targetLang,
+      rawTranslation: editingSegment.translation,
+      correctedTranslation: editTransText,
+      engine: 'SpeechToText IndicConformer'
+    });
+
+    setTranscripts(prev => prev.map(t => {
+      if (t.id === editingSegment.id) {
+        return {
+          ...t,
+          text: editNativeText,
+          translation: editTransText || undefined,
+          confidenceTier: 'verified',
+          needsReview: false,
+          lexiconMatch: true
+        };
+      }
+      return t;
+    }));
+
+    setEditingSegment(null);
+  };
+
+  const getConfidenceTier = (seg: TranscribeSegment): 'verified' | 'dataset' | 'fallback' | 'needs_review' => {
+    if (seg.confidenceTier) return seg.confidenceTier;
+    if (seg.needsReview || (seg.asrConfidence !== null && seg.asrConfidence !== undefined && seg.asrConfidence < 0.60)) {
+      return 'needs_review';
+    }
+    if (seg.lexiconMatch || (seg.asrConfidence && seg.asrConfidence >= 0.85)) {
+      return 'verified';
+    }
+    if (seg.asrConfidence && seg.asrConfidence >= 0.70) {
+      return 'dataset';
+    }
+    return 'fallback';
   };
 
   const handleCopyAll = () => {
@@ -551,6 +694,32 @@ export const SpeechToTextPage: React.FC = () => {
                     </span>
                   </div>
 
+                  {/* Audio Quality & Noise Heuristic Bar */}
+                  {audioQuality && (
+                    <div className={`p-2.5 rounded-xl border text-xs flex items-center justify-between gap-2 shadow-2xs ${
+                      audioQuality.status === 'good'
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                        : audioQuality.status === 'moderate'
+                        ? 'bg-amber-50 border-amber-200 text-amber-900'
+                        : audioQuality.status === 'poor'
+                        ? 'bg-rose-50 border-rose-200 text-rose-900'
+                        : 'bg-slate-50 border-slate-200 text-slate-700'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${
+                          audioQuality.status === 'good' ? 'bg-emerald-500' :
+                          audioQuality.status === 'moderate' ? 'bg-amber-500' :
+                          audioQuality.status === 'poor' ? 'bg-rose-500 animate-pulse' : 'bg-slate-400'
+                        }`} />
+                        <span className="font-bold capitalize">{audioQuality.status} Clarity</span>
+                        <span className="text-[11px] opacity-75 font-mono">({audioQuality.snrEstimateDb} dB SNR)</span>
+                      </div>
+                      <span className="text-[11px] text-right truncate max-w-[220px]">
+                        {audioQuality.message}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Interim Live Recognition Text Preview */}
                   {interimText && (
                     <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl text-xs text-[#14532d] animate-pulse">
@@ -638,7 +807,7 @@ export const SpeechToTextPage: React.FC = () => {
                   2. ASR generates text in native script & translates it to {targetLangObj.name} with audio playback.
                 </p>
                 <p className="text-slate-400 italic">
-                  Note: Santali uses AI4Bharat IndicConformer. Mundari & Ho ASR will arrive in Phases 2 & 3.
+                  Note: Santali uses AI4Bharat IndicConformer. Mundari & Ho ASR are currently under development.
                 </p>
               </div>
 
@@ -693,96 +862,131 @@ export const SpeechToTextPage: React.FC = () => {
                       </p>
                     </div>
                   ) : (
-                    transcripts.map((t) => (
-                      <div
-                        key={t.id}
-                        className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs hover:border-[#249144]/60 transition-all space-y-2.5 group"
-                      >
-                        {/* Header metadata */}
-                        <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
-                          <span className="font-bold text-slate-700 flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-[#249144]"></span>
-                            {t.speaker}
-                          </span>
-                          <div className="flex items-center gap-3">
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" /> {t.time}
-                            </span>
-                            <button
-                              onClick={() => handleDeleteSegment(t.id)}
-                              className="text-slate-300 hover:text-red-500 transition cursor-pointer"
-                              title="Delete segment"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
+                    transcripts.map((t) => {
+                      const tier = getConfidenceTier(t);
 
-                        {/* Spoken Text in Native Script */}
-                        <div className="flex items-start justify-between gap-3">
-                          <p className="text-base text-slate-900 font-medium leading-relaxed font-sans flex-1">
-                            {t.text}
-                          </p>
-                          <button
-                            onClick={() => {
-                              setPlayingSegmentId(`src-${t.id}`);
-                              playTextSpeech(t.text, t.sourceLang, 0.9, () => setPlayingSegmentId(null));
-                            }}
-                            className="p-1.5 rounded-lg bg-slate-50 hover:bg-emerald-50 text-slate-600 hover:text-[#249144] border border-slate-200 transition cursor-pointer flex-shrink-0"
-                            title={`Play Spoken Audio (${t.sourceLang.toUpperCase()})`}
-                          >
-                            <Volume2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-
-                        {/* Honest Confidence & Quality Badges */}
-                        <div className="flex flex-wrap items-center gap-2 pt-1 text-[10px]">
-                          {t.asrConfidence !== null && t.asrConfidence !== undefined ? (
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-[#14532d] border border-emerald-200 font-semibold">
-                              ASR Quality: {(t.asrConfidence * 100).toFixed(0)}% (Acoustic Verified)
+                      return (
+                        <div
+                          key={t.id}
+                          className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs hover:border-[#249144]/60 transition-all space-y-2.5 group"
+                        >
+                          {/* Header metadata */}
+                          <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                            <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-[#249144]"></span>
+                              {t.speaker}
                             </span>
-                          ) : t.sourceLang === 'sat' ? (
-                            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-semibold">
-                              ASR: IndicConformer (Neural CTC)
-                            </span>
-                          ) : null}
-
-                          {t.needsReview && (
-                            <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-semibold">
-                              Needs Verification
-                            </span>
-                          )}
-
-                          {t.translation && t.lexiconMatch && (
-                            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 font-semibold">
-                              Translation: Lexicon Verified
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Translated Subtitle */}
-                        {t.translation && (
-                          <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-100 flex items-start justify-between gap-3">
-                            <p className="text-xs text-[#14532d] font-semibold leading-normal flex-1">
-                              <span className="text-slate-400 font-normal uppercase text-[10px] block">
-                                {targetLangObj.name} Translation:
+                            <div className="flex items-center gap-2">
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> {t.time}
                               </span>
-                              {t.translation}
+                              <button
+                                onClick={() => handleOpenEdit(t)}
+                                className="text-slate-400 hover:text-[#249144] transition cursor-pointer flex items-center gap-1 px-1.5 py-0.5 rounded-md hover:bg-slate-100"
+                                title="Suggest Human Correction"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                                <span className="text-[10px] hidden sm:inline">Edit</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteSegment(t.id)}
+                                className="text-slate-300 hover:text-red-500 transition cursor-pointer p-0.5"
+                                title="Delete segment"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Spoken Text in Native Script */}
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="text-base text-slate-900 font-medium leading-relaxed font-sans flex-1">
+                              {t.text}
                             </p>
                             <button
                               onClick={() => {
-                                setPlayingSegmentId(`trans-${t.id}`);
-                                playTextSpeech(t.translation!, t.targetLang, 0.9, () => setPlayingSegmentId(null));
+                                setPlayingSegmentId(`src-${t.id}`);
+                                playTextSpeech(t.text, t.sourceLang, 0.9, () => setPlayingSegmentId(null));
                               }}
-                              className="p-1.5 rounded-lg bg-white hover:bg-emerald-50 text-slate-600 hover:text-[#249144] border border-slate-200 transition cursor-pointer flex-shrink-0"
-                              title={`Play Translated Audio (${t.targetLang.toUpperCase()})`}
+                              className="p-1.5 rounded-lg bg-slate-50 hover:bg-emerald-50 text-slate-600 hover:text-[#249144] border border-slate-200 transition cursor-pointer flex-shrink-0"
+                              title={`Play Spoken Audio (${t.sourceLang.toUpperCase()})`}
                             >
                               <Volume2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
-                        )}
-                      </div>
-                    ))
+
+                          {/* Standardized 4-Tier Confidence Badges */}
+                          <div className="flex flex-wrap items-center gap-2 pt-1 text-[10px]">
+                            {tier === 'verified' && (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold flex items-center gap-1">
+                                🟢 Verified
+                                {t.asrConfidence && ` (${Math.round(t.asrConfidence * 100)}%)`}
+                              </span>
+                            )}
+                            {tier === 'dataset' && (
+                              <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-semibold flex items-center gap-1">
+                                🟡 Dataset Match
+                                {t.asrConfidence && ` (${Math.round(t.asrConfidence * 100)}%)`}
+                              </span>
+                            )}
+                            {tier === 'fallback' && (
+                              <span className="px-2 py-0.5 rounded-full bg-orange-50 text-orange-800 border border-orange-200 font-semibold flex items-center gap-1">
+                                🟠 Standard ASR
+                              </span>
+                            )}
+                            {tier === 'needs_review' && (
+                              <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-800 border border-rose-200 font-semibold flex items-center gap-1">
+                                🔴 Needs Review
+                              </span>
+                            )}
+
+                            {t.translation && t.lexiconMatch && (
+                              <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 font-semibold">
+                                Lexicon Verified
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Honest Quality Warning if Needs Review */}
+                          {tier === 'needs_review' && (
+                            <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 flex items-center justify-between gap-2 shadow-2xs">
+                              <span className="flex items-center gap-1.5 font-medium">
+                                <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                                <span>We are not fully confident about this sentence. Review or edit below.</span>
+                              </span>
+                              <button
+                                onClick={() => handleOpenEdit(t)}
+                                className="px-2.5 py-1 bg-white hover:bg-rose-100 text-rose-800 font-bold rounded-lg border border-rose-200 transition text-[11px] cursor-pointer flex items-center gap-1"
+                              >
+                                <Edit3 className="w-3 h-3" /> Edit
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Translated Subtitle */}
+                          {t.translation && (
+                            <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-100 flex items-start justify-between gap-3">
+                              <p className="text-xs text-[#14532d] font-semibold leading-normal flex-1">
+                                <span className="text-slate-400 font-normal uppercase text-[10px] block">
+                                  {targetLangObj.name} Translation:
+                                </span>
+                                {t.translation}
+                              </p>
+                              <button
+                                onClick={() => {
+                                  setPlayingSegmentId(`trans-${t.id}`);
+                                  playTextSpeech(t.translation!, t.targetLang, 0.9, () => setPlayingSegmentId(null));
+                                }}
+                                className="p-1.5 rounded-lg bg-white hover:bg-emerald-50 text-slate-600 hover:text-[#249144] border border-slate-200 transition cursor-pointer flex-shrink-0"
+                                title={`Play Translated Audio (${t.targetLang.toUpperCase()})`}
+                              >
+                                <Volume2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -806,6 +1010,72 @@ export const SpeechToTextPage: React.FC = () => {
         </div>
 
       </div>
+
+      {/* Human Correction Modal */}
+      {editingSegment && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-[#249144]" />
+                <h3 className="font-bold text-slate-900 text-base">Suggest Human Correction</h3>
+              </div>
+              <button 
+                onClick={() => setEditingSegment(null)} 
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500">
+              Corrections are saved locally as verified ground-truth data for future model enhancement. Automatic retraining is strictly prevented.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Native Speech ({editingSegment.sourceLang.toUpperCase()})
+                </label>
+                <textarea
+                  rows={2}
+                  value={editNativeText}
+                  onChange={e => setEditNativeText(e.target.value)}
+                  className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-200 focus:border-[#249144] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Translation ({editingSegment.targetLang.toUpperCase()})
+                </label>
+                <textarea
+                  rows={2}
+                  value={editTransText}
+                  onChange={e => setEditTransText(e.target.value)}
+                  className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-200 focus:border-[#249144] outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setEditingSegment(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveCorrection}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-[#249144] hover:bg-[#1a7536] text-white flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+              >
+                <Check className="w-4 h-4" /> Save Correction
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </section>
   );
 };

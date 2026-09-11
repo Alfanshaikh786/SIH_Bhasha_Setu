@@ -16,6 +16,10 @@ const TextToSpeechPage = lazy(() => import('./pages/features/TextToSpeechPage').
 const VideoSubtitlePage = lazy(() => import('./pages/features/VideoSubtitlePage').then(m => ({ default: m.VideoSubtitlePage })));
 const LearningStudioPage = lazy(() => import('./pages/features/LearningStudioPage').then(m => ({ default: m.LearningStudioPage })));
 const DictionaryPage = lazy(() => import('./pages/resources/DictionaryPage').then(m => ({ default: m.DictionaryPage })));
+const FieldModePage = lazy(() => import('./pages/features/FieldModePage').then(m => ({ default: m.FieldModePage })));
+const TeacherModePage = lazy(() => import('./pages/features/TeacherModePage').then(m => ({ default: m.TeacherModePage })));
+const KnowledgeBasePage = lazy(() => import('./pages/resources/KnowledgeBasePage').then(m => ({ default: m.KnowledgeBasePage })));
+const EmergencyModePage = lazy(() => import('./pages/features/EmergencyModePage').then(m => ({ default: m.EmergencyModePage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
 const ContactPage = lazy(() => import('./pages/ContactPage').then(m => ({ default: m.ContactPage })));
 const VaaniStreamPage = lazy(() => import('./pages/VaaniStreamPage').then(m => ({ default: m.VaaniStreamPage })));
@@ -41,6 +45,13 @@ export const App: React.FC = () => {
             <Route path="/" element={<HomePage />} />
             <Route path="/home" element={<HomePage />} />
             
+            {/* Core Workflows */}
+            <Route path="/field-mode" element={<FieldModePage />} />
+            <Route path="/teacher-mode" element={<TeacherModePage />} />
+            <Route path="/knowledge-base" element={<KnowledgeBasePage />} />
+            <Route path="/emergency-mode" element={<EmergencyModePage />} />
+            <Route path="/conversation" element={<SpeechToSpeechPage />} />
+
             {/* Features */}
             <Route path="/features/text-to-text" element={<TextToTextPage />} />
             <Route path="/features/ocr" element={<OCRPage />} />
@@ -51,6 +62,7 @@ export const App: React.FC = () => {
             <Route path="/features/learning-studio" element={<LearningStudioPage />} />
             
             {/* Resources */}
+            <Route path="/resources/knowledge-base" element={<KnowledgeBasePage />} />
             <Route path="/resources/learning-studio" element={<LearningStudioPage />} />
             <Route path="/learning-studio" element={<LearningStudioPage />} />
             <Route path="/resources/dictionary" element={<DictionaryPage />} />
