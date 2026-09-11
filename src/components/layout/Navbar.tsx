@@ -32,7 +32,8 @@ import {
   Globe,
   Compass,
   AlertTriangle,
-  ShieldCheck
+  ShieldCheck,
+  Sparkles
 } from 'lucide-react';
 import { BhashaSetuLogo } from '../common/BhashaSetuLogo';
 import { LoginModal } from '../common/LoginModal';
@@ -134,12 +135,135 @@ export const Navbar: React.FC = () => {
                   )}
                 </button>
 
-                {/* Features Mega Panel */}
+                {/* Features Mega Panel (Strictly 6 Core Features matching screenshot) */}
                 {activeDropdown === 'features' && (
                   <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[680px] bg-white rounded-3xl border border-slate-100 shadow-2xl p-6 grid gap-4 animate-in fade-in slide-in-from-top-2 duration-150 z-50">
                     <div className="border-b border-slate-100 pb-2">
                       <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                         FEATURES
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* 1. Text to Text Translation */}
+                      <Link
+                        to="/features/text-to-text"
+                        onClick={() => setActiveDropdown(null)}
+                        className="flex items-center gap-3.5 p-3 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition group bg-white shadow-xs"
+                      >
+                        <div className="w-11 h-11 rounded-xl bg-emerald-50 text-[#249144] flex items-center justify-center flex-shrink-0 group-hover:bg-[#249144] group-hover:text-white transition">
+                          <Languages className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d]">Text to Text Translation</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Type in any tribal language</p>
+                        </div>
+                      </Link>
+
+                      {/* 2. OCR */}
+                      <Link
+                        to="/features/ocr"
+                        onClick={() => setActiveDropdown(null)}
+                        className="flex items-center gap-3.5 p-3 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition group bg-white shadow-xs"
+                      >
+                        <div className="w-11 h-11 rounded-xl bg-emerald-50 text-[#249144] flex items-center justify-center flex-shrink-0 group-hover:bg-[#249144] group-hover:text-white transition">
+                          <ScanText className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d]">OCR</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Extract and translate from images</p>
+                        </div>
+                      </Link>
+
+                      {/* 3. Speech to Text */}
+                      <Link
+                        to="/features/speech-to-text"
+                        onClick={() => setActiveDropdown(null)}
+                        className="flex items-center gap-3.5 p-3 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition group bg-white shadow-xs"
+                      >
+                        <div className="w-11 h-11 rounded-xl bg-emerald-50 text-[#249144] flex items-center justify-center flex-shrink-0 group-hover:bg-[#249144] group-hover:text-white transition">
+                          <Mic className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d]">Speech to Text</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Speak, get it transcribed</p>
+                        </div>
+                      </Link>
+
+                      {/* 4. Voice to Voice */}
+                      <Link
+                        to="/features/speech-to-speech"
+                        onClick={() => setActiveDropdown(null)}
+                        className="flex items-center gap-3.5 p-3 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition group bg-white shadow-xs"
+                      >
+                        <div className="w-11 h-11 rounded-xl bg-emerald-50 text-[#249144] flex items-center justify-center flex-shrink-0 group-hover:bg-[#249144] group-hover:text-white transition">
+                          <Radio className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d]">Voice to Voice</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Two-way conversational dialogue</p>
+                        </div>
+                      </Link>
+
+                      {/* 5. Text to Speech */}
+                      <Link
+                        to="/features/text-to-speech"
+                        onClick={() => setActiveDropdown(null)}
+                        className="flex items-center gap-3.5 p-3 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition group bg-white shadow-xs"
+                      >
+                        <div className="w-11 h-11 rounded-xl bg-emerald-50 text-[#249144] flex items-center justify-center flex-shrink-0 group-hover:bg-[#249144] group-hover:text-white transition">
+                          <Volume2 className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d]">Text to Speech</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Listen in native tribal accents</p>
+                        </div>
+                      </Link>
+
+                      {/* 6. Video Subtitle */}
+                      <Link
+                        to="/features/video-subtitle"
+                        onClick={() => setActiveDropdown(null)}
+                        className="flex items-center gap-3.5 p-3 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition group bg-white shadow-xs"
+                      >
+                        <div className="w-11 h-11 rounded-xl bg-emerald-50 text-[#249144] flex items-center justify-center flex-shrink-0 group-hover:bg-[#249144] group-hover:text-white transition">
+                          <Video className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d]">Video Subtitle</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Subtitles for videos & media</p>
+                        </div>
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Additional Features Dropdown (Specialized Operational Modes) */}
+              <div className="relative">
+                <button
+                  onClick={() => toggleDropdown('additional-features')}
+                  className={`font-medium transition-all flex items-center gap-1.5 py-1.5 px-3.5 rounded-xl text-sm cursor-pointer ${
+                    activeDropdown === 'additional-features' || location.pathname === '/field-mode' || location.pathname === '/teacher-mode' || location.pathname === '/emergency-mode' || location.pathname === '/knowledge-base'
+                      ? 'text-[#14532d] bg-[#dcfce7] font-semibold'
+                      : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4 text-[#249144]" />
+                  <span>Additional Features</span>
+                  {activeDropdown === 'additional-features' ? (
+                    <ChevronUp className="w-3.5 h-3.5 text-[#14532d]" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                  )}
+                </button>
+
+                {/* Additional Features Mega Panel */}
+                {activeDropdown === 'additional-features' && (
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[680px] bg-white rounded-3xl border border-slate-100 shadow-2xl p-6 grid gap-4 animate-in fade-in slide-in-from-top-2 duration-150 z-50">
+                    <div className="border-b border-slate-100 pb-2">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                        ADDITIONAL FEATURES
                       </span>
                     </div>
 
@@ -180,51 +304,6 @@ export const Navbar: React.FC = () => {
                         </div>
                       </Link>
 
-                      {/* Two-Way Conversation */}
-                      <Link
-                        to="/features/speech-to-speech"
-                        onClick={() => setActiveDropdown(null)}
-                        className="flex items-center gap-3.5 p-3 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition group bg-white shadow-xs"
-                      >
-                        <div className="w-11 h-11 rounded-xl bg-emerald-50 text-[#249144] flex items-center justify-center flex-shrink-0 group-hover:bg-[#249144] group-hover:text-white transition">
-                          <Radio className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d]">Two-Way Conversation</p>
-                          <p className="text-xs text-slate-500 mt-0.5">Person A ↔ Person B dialogue</p>
-                        </div>
-                      </Link>
-
-                      {/* Speech to Text */}
-                      <Link
-                        to="/features/speech-to-text"
-                        onClick={() => setActiveDropdown(null)}
-                        className="flex items-center gap-3.5 p-3 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition group bg-white shadow-xs"
-                      >
-                        <div className="w-11 h-11 rounded-xl bg-emerald-50 text-[#249144] flex items-center justify-center flex-shrink-0 group-hover:bg-[#249144] group-hover:text-white transition">
-                          <Mic className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d]">Speech to Text (ASR)</p>
-                          <p className="text-xs text-slate-500 mt-0.5">Neural Santali & Indian speech</p>
-                        </div>
-                      </Link>
-
-                      {/* Text to Text */}
-                      <Link
-                        to="/features/text-to-text"
-                        onClick={() => setActiveDropdown(null)}
-                        className="flex items-center gap-3.5 p-3 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition group bg-white shadow-xs"
-                      >
-                        <div className="w-11 h-11 rounded-xl bg-emerald-50 text-[#249144] flex items-center justify-center flex-shrink-0 group-hover:bg-[#249144] group-hover:text-white transition">
-                          <Languages className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d]">Text Translation</p>
-                          <p className="text-xs text-slate-500 mt-0.5">Verified on-device database</p>
-                        </div>
-                      </Link>
-
                       {/* Emergency Mode */}
                       <Link
                         to="/emergency-mode"
@@ -243,33 +322,21 @@ export const Navbar: React.FC = () => {
                         </div>
                       </Link>
 
-                      {/* Video Subtitle */}
+                      {/* Verified Knowledge Base */}
                       <Link
-                        to="/features/video-subtitle"
+                        to="/knowledge-base"
                         onClick={() => setActiveDropdown(null)}
-                        className="flex items-center gap-3.5 p-3 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition group bg-white shadow-xs"
+                        className="flex items-center gap-3.5 p-3 rounded-2xl border border-emerald-200 bg-emerald-50/30 hover:bg-emerald-100/50 transition group shadow-xs"
                       >
-                        <div className="w-11 h-11 rounded-xl bg-emerald-50 text-[#249144] flex items-center justify-center flex-shrink-0 group-hover:bg-[#249144] group-hover:text-white transition">
-                          <Video className="w-5 h-5" />
+                        <div className="w-11 h-11 rounded-xl bg-[#249144] text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                          <ShieldCheck className="w-5 h-5" />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d]">Video Subtitles</p>
-                          <p className="text-xs text-slate-500 mt-0.5">Generate SRT subtitle files</p>
-                        </div>
-                      </Link>
-
-                      {/* OCR */}
-                      <Link
-                        to="/features/ocr"
-                        onClick={() => setActiveDropdown(null)}
-                        className="flex items-center gap-3.5 p-3 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition group bg-white shadow-xs"
-                      >
-                        <div className="w-11 h-11 rounded-xl bg-emerald-50 text-[#249144] flex items-center justify-center flex-shrink-0 group-hover:bg-[#249144] group-hover:text-white transition">
-                          <ScanText className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d]">OCR Extraction</p>
-                          <p className="text-xs text-slate-500 mt-0.5">Extract from textbook images</p>
+                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#14532d] flex items-center gap-1.5">
+                            <span>Knowledge Base</span>
+                            <span className="text-[10px] bg-emerald-200/80 text-[#14532d] px-1.5 py-0.2 rounded-full font-bold">New</span>
+                          </p>
+                          <p className="text-xs text-slate-500 mt-0.5">12-category verified lexicon</p>
                         </div>
                       </Link>
                     </div>
@@ -553,33 +620,49 @@ export const Navbar: React.FC = () => {
                 </div>
               </div>
 
-              {/* Features List */}
+              {/* Features List (Strictly 6 Core Features) */}
               <div className="border-t border-slate-100 pt-2">
-                <p className="px-4 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Primary Workflows</p>
+                <p className="px-4 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Features</p>
                 <div className="grid gap-1 mt-1 pl-2">
-                  <Link to="/field-mode" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 text-xs sm:text-sm text-emerald-800 font-bold hover:bg-emerald-50 rounded-lg flex items-center gap-2">
-                    <Compass className="w-4 h-4 text-[#249144]" /> Field Mode (Simple)
+                  <Link to="/features/text-to-text" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-green-50 rounded-lg flex items-center gap-2">
+                    <Languages className="w-4 h-4 text-[#249144]" /> Text to Text Translation
                   </Link>
-                  <Link to="/teacher-mode" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 text-xs sm:text-sm text-indigo-800 font-bold hover:bg-indigo-50 rounded-lg flex items-center gap-2">
-                    <GraduationCap className="w-4 h-4 text-indigo-600" /> Teacher Mode (Captions)
-                  </Link>
-                  <Link to="/features/speech-to-speech" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-green-50 rounded-lg flex items-center gap-2">
-                    <Radio className="w-4 h-4 text-[#249144]" /> Two-Way Conversation
+                  <Link to="/features/ocr" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-green-50 rounded-lg flex items-center gap-2">
+                    <ScanText className="w-4 h-4 text-[#249144]" /> OCR
                   </Link>
                   <Link to="/features/speech-to-text" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-green-50 rounded-lg flex items-center gap-2">
                     <Mic className="w-4 h-4 text-[#249144]" /> Speech to Text
                   </Link>
-                  <Link to="/features/text-to-text" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-green-50 rounded-lg flex items-center gap-2">
-                    <Languages className="w-4 h-4 text-[#249144]" /> Text Translation
+                  <Link to="/features/speech-to-speech" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-green-50 rounded-lg flex items-center gap-2">
+                    <Radio className="w-4 h-4 text-[#249144]" /> Voice to Voice
+                  </Link>
+                  <Link to="/features/text-to-speech" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-green-50 rounded-lg flex items-center gap-2">
+                    <Volume2 className="w-4 h-4 text-[#249144]" /> Text to Speech
+                  </Link>
+                  <Link to="/features/video-subtitle" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-green-50 rounded-lg flex items-center gap-2">
+                    <Video className="w-4 h-4 text-[#249144]" /> Video Subtitle
+                  </Link>
+                </div>
+              </div>
+
+              {/* Additional Features List */}
+              <div className="border-t border-slate-100 pt-2">
+                <p className="px-4 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#249144]" />
+                  <span>Additional Features</span>
+                </p>
+                <div className="grid gap-1 mt-1 pl-2">
+                  <Link to="/field-mode" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 text-xs sm:text-sm text-emerald-800 font-bold hover:bg-emerald-50 rounded-lg flex items-center gap-2">
+                    <Compass className="w-4 h-4 text-[#249144]" /> Field Mode
+                  </Link>
+                  <Link to="/teacher-mode" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 text-xs sm:text-sm text-indigo-800 font-bold hover:bg-indigo-50 rounded-lg flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4 text-indigo-600" /> Teacher Mode
                   </Link>
                   <Link to="/emergency-mode" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 text-xs sm:text-sm text-red-800 font-bold hover:bg-red-50 rounded-lg flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 text-red-600" /> Emergency Mode
                   </Link>
-                  <Link to="/features/video-subtitle" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-green-50 rounded-lg flex items-center gap-2">
-                    <Video className="w-4 h-4 text-[#249144]" /> Video Subtitles
-                  </Link>
-                  <Link to="/features/ocr" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-green-50 rounded-lg flex items-center gap-2">
-                    <ScanText className="w-4 h-4 text-[#249144]" /> OCR Text Extraction
+                  <Link to="/knowledge-base" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 text-xs sm:text-sm text-emerald-800 font-bold hover:bg-emerald-50 rounded-lg flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-[#249144]" /> Verified Knowledge Base
                   </Link>
                 </div>
               </div>
