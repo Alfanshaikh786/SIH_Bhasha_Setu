@@ -523,7 +523,10 @@ export const SpeechToTextPage: React.FC = () => {
     const a = document.createElement('a');
     a.href = url;
     a.download = `BhashaSetu_Transcript_${sourceLang}_to_${targetLang}.srt`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const handleDeleteSegment = (id: string) => {

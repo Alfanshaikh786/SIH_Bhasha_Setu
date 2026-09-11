@@ -280,8 +280,8 @@ def translate_text(req: TranslateRequest):
                 COALESCE(hi.text_content, '') as hindi,
                 COALESCE(sat.text_content, '') as santali,
                 sat.pronunciation as santali_roman,
-                COALESCE(ho.text_content, sat.text_content, '') as ho,
-                COALESCE(unr.text_content, sat.text_content, '') as mundari,
+                COALESCE(ho.text_content, '') as ho,
+                COALESCE(unr.text_content, '') as mundari,
                 COALESCE(c.category_name, 'General') as category,
                 CASE WHEN ts.verified THEN 'Yes' ELSE 'No' END as verified,
                 target.text_content as target_text,
@@ -302,9 +302,9 @@ def translate_text(req: TranslateRequest):
         cur.execute(exact_query, (src_lang_id, target_lang_id, lower, lower))
         row = cur.fetchone()
 
-        if row:
-            target_text = row[9] or row[3] or row[1]
-            roman = row[10] or row[4]
+        if row and row[9]:
+            target_text = row[9]
+            roman = row[10] or (row[4] if req.target_lang == 'sat' else None)
             if req.target_lang in ('sat', 'hoc', 'unr') and roman and '(' not in target_text:
                 target_text = f"{target_text} ({roman})"
 
@@ -329,8 +329,8 @@ def translate_text(req: TranslateRequest):
                 COALESCE(hi.text_content, '') as hindi,
                 COALESCE(sat.text_content, '') as santali,
                 sat.pronunciation as santali_roman,
-                COALESCE(ho.text_content, sat.text_content, '') as ho,
-                COALESCE(unr.text_content, sat.text_content, '') as mundari,
+                COALESCE(ho.text_content, '') as ho,
+                COALESCE(unr.text_content, '') as mundari,
                 COALESCE(c.category_name, 'General') as category,
                 CASE WHEN ts.verified THEN 'Yes' ELSE 'No' END as verified,
                 target.text_content as target_text,
@@ -351,9 +351,9 @@ def translate_text(req: TranslateRequest):
         cur.execute(fuzzy_query, (src_lang_id, target_lang_id, pattern))
         row = cur.fetchone()
 
-        if row:
-            target_text = row[9] or row[3] or row[1]
-            roman = row[10] or row[4]
+        if row and row[9]:
+            target_text = row[9]
+            roman = row[10] or (row[4] if req.target_lang == 'sat' else None)
             if req.target_lang in ('sat', 'hoc', 'unr') and roman and '(' not in target_text:
                 target_text = f"{target_text} ({roman})"
 

@@ -128,12 +128,12 @@ export async function transcribeAudioFile(
   });
 
   if (!response.ok) {
-    let errorDetail = 'ASR transcription failed';
+    let errorDetail = 'The local Santali ASR engine is currently unavailable. Please verify the backend service is running.';
     try {
       const errJson = await response.json();
       errorDetail = errJson.detail || errorDetail;
     } catch {}
-    throw new Error(`[ASR Error ${response.status}]: ${errorDetail}`);
+    throw new Error(errorDetail);
   }
 
   const data: ASRResult = await response.json();
@@ -157,33 +157,51 @@ export async function transcribeAudioFile(
 }
 
 /**
- * Converts seconds (e.g. 74.25) to standard SRT timestamp format (00:01:14,250).
+ * Converts milliseconds to standard SubRip SRT timestamp format (HH:MM:SS,mmm).
  */
-export function formatSecondsToSRT(seconds: number): string {
-  const totalMs = Math.max(0, Math.floor(seconds * 1000));
-  const hrs = Math.floor(totalMs / 3600000);
-  const mins = Math.floor((totalMs % 3600000) / 60000);
-  const secs = Math.floor((totalMs % 60000) / 1000);
-  const ms = totalMs % 1000;
+export function formatMsToSRT(totalMs: number): string {
+  const safeMs = Math.max(0, Math.floor(totalMs));
+  const hrs = Math.floor(safeMs / 3600000);
+  const mins = Math.floor((safeMs % 3600000) / 60000);
+  const secs = Math.floor((safeMs % 60000) / 1000);
+  const ms = safeMs % 1000;
 
   return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
 }
 
 /**
+ * Converts seconds (e.g. 74.25) to standard SRT timestamp format (00:01:14,250).
+ */
+export function formatSecondsToSRT(seconds: number): string {
+  return formatMsToSRT(seconds * 1000);
+}
+
+/**
  * Generates valid, standards-compliant SubRip Subtitle (.SRT) text
- * based on actual audio segment timestamps.
+ * with strictly sequential, non-overlapping timestamps and valid UTF-8 encoding.
  */
 export function generateSRTContent(segments: ASRSegment[]): string {
   let srt = '';
+  let lastEndMs = 0;
+
   segments.forEach((seg, idx) => {
-    const startStr = formatSecondsToSRT(seg.start_sec);
-    const endStr = formatSecondsToSRT(seg.end_sec > seg.start_sec ? seg.end_sec : seg.start_sec + 2.0);
+    let startSec = Math.max(0, seg.start_sec);
+    let startMs = Math.floor(startSec * 1000);
+    if (startMs < lastEndMs) {
+      startMs = lastEndMs;
+    }
+    let endSec = seg.end_sec > seg.start_sec ? seg.end_sec : seg.start_sec + 2.0;
+    let endMs = Math.max(startMs + 500, Math.floor(endSec * 1000));
+    lastEndMs = endMs;
+
+    const startStr = formatMsToSRT(startMs);
+    const endStr = formatMsToSRT(endMs);
 
     srt += `${idx + 1}\n`;
     srt += `${startStr} --> ${endStr}\n`;
-    srt += `${seg.text}\n`;
-    if (seg.translation) {
-      srt += `${seg.translation}\n`;
+    srt += `${seg.text.trim()}\n`;
+    if (seg.translation && seg.translation.trim()) {
+      srt += `${seg.translation.trim()}\n`;
     }
     srt += '\n';
   });
@@ -217,7 +235,7 @@ export class MicrophoneStreamer {
     try {
       this.ws = new WebSocket(ASR_WS_URL);
     } catch (e: any) {
-      this.onError(`Failed to connect to ASR WebSocket: ${e?.message || e}`);
+      this.onError('Unable to connect to Santali speech recognition service. Please ensure the local neural engine is running on port 5000.');
       return;
     }
 
@@ -239,13 +257,13 @@ export class MicrophoneStreamer {
             });
           }
         } else if (msg.type === 'error') {
-          this.onError(msg.message || 'ASR streaming error');
+          this.onError(msg.message || 'Speech recognition processing notice');
         }
       } catch {}
     };
 
     this.ws.onerror = () => {
-      this.onError('ASR WebSocket connection encountered an error.');
+      this.onError('Speech recognition connection interrupted. The service may be offline or initializing.');
     };
 
     // 2. Request microphone stream

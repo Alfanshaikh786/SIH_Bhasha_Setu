@@ -105,24 +105,33 @@ The interface provides two dedicated transcription modes switchable via top tabs
 
 ### 3.3 Dialect & Translation Pair Selection (`L447-L493`)
 - **Spoken Dialect:** Supports Santali (`sat` - Starred with Neural ASR badge), Hindi (`hin`), English (`eng`), Mundari (`unr` - marked Phase 2), and Ho (`hoc` - marked Phase 3).
-- **Target Translation:** Instant machine translation into any supported language (e.g., Santali spoken $\to$ Hindi or English subtitles).
+- **Target Translation:** Instant machine translation into any supported language (e.g., Santali spoken $\to$ Hindi or English### 3.4 Real-Time Audio Quality & Noise Heuristic Meter
+- Powered by the browser Web Audio API (`AudioQualityMonitor` class via `AnalyserNode`).
+- Computes root-mean-square (RMS) energy and estimated Signal-to-Noise Ratio (SNR) in dB from the microphone stream.
+- **Dynamic Coaching Indicators:**
+  - 🟢 **Good Clarity ($\text{SNR} \ge 18\text{ dB}$):** Optimal microphone distance and low ambient background noise.
+  - 🟡 **Moderate Noise ($10\text{ dB} \le \text{SNR} < 18\text{ dB}$):** Background chatter or hum detected; advises speaking slightly closer.
+  - 🔴 **High Noise / Distortion ($\text{SNR} < 10\text{ dB}$):** Heavy acoustic interference; prompts user: *"High background noise detected. Move closer to the microphone for accurate Ol Chiki recognition."*
 
-### 3.4 Interactive Segment Cards (`L697-L786`)
-Every transcribed utterance is rendered as a standalone interactive card containing:
+### 3.5 Interactive Segment Cards & 4-Tier Provenance Badges
+Every transcribed utterance is rendered as an interactive card containing:
 1. **Speaker Label & Timestamp:** `Live Speaker` or `Speaker 1/2` with chronological interval (`MM:SS - MM:SS`).
 2. **Native Script Utterance:** Full display in native typography (large-scale **Ol Chiki** or **Devanagari**).
 3. **Dual Audio Playback Buttons:**
    - Source playback via `playTextSpeech(t.text, t.sourceLang)`
    - Translated playback via `playTextSpeech(t.translation, t.targetLang)`
-4. **Provenance Badges:**
-   - `ASR Quality: XX% (Acoustic Verified)` (calculated from CTC logprobs)
-   - `ASR: IndicConformer (Neural CTC)`
-   - `Translation: Lexicon Verified` (matched against 6,780 verified rows)
-   - `Needs Verification` (flagged if acoustic confidence $< 0.70$)
-5. **Translated Subtitle Box:** Clean emerald container highlighting the parallel translation.
-6. **Individual Segment Deletion:** Instant `Trash2` button to curate the transcript.
+4. **Standardized 4-Tier Confidence Badges:**
+   - 🟢 **Verified ($\ge 85\%$ or Verified Corpus Match):** High acoustic clarity backed by validated dataset entries.
+   - 🟡 **Dataset Match:** Curated phrase or lexicon dictionary match.
+   - 🟠 **Standard ASR:** Rule-based transliteration or standard model output.
+   - 🔴 **Needs Review ($< 60\%$):** Displays clear advisory notice: *"We are not fully confident about this sentence. Review or edit below."*
+5. **Human Correction Audit Store Action:**
+   - Interactive **"Edit / Correct"** modal (`CorrectionModal`) enabling teachers, field workers, and native speakers to rectify acoustic misrecognitions or translation inaccuracies.
+   - Corrections are persisted offline in `localStorage` audit store for continuous human-in-the-loop quality curation.
+6. **Translated Subtitle Box:** Clean emerald container highlighting the parallel translation.
+7. **Individual Segment Deletion:** Instant `Trash2` button to curate the transcript.
 
-### 3.5 Subtitle Export & Session Actions (`L358-L388`)
+### 3.6 Subtitle Export & Session Actions
 - **Export .SRT:** Generates a standard SubRip Subtitle file with sequential indices and microsecond-precise timings, downloadable directly in the browser as `BhashaSetu_Transcript_{source}_to_{target}.srt`.
 - **Copy All:** Copies the entire transcript formatted with speaker tags, timestamps, source text, and translations to the system clipboard.
 - **Clear All:** Resets the transcription buffer with confirmation.
@@ -143,13 +152,19 @@ export class MicrophoneStreamer {
 }
 ```
 
-### 4.2 Browser Web Speech API Fallback (for Hindi & English)
+### 4.2 Real-Time Audio Quality Monitoring (`AudioQualityMonitor` Class)
+Captures raw PCM data directly from the microphone `MediaStream` using an `AnalyserNode`:
+- Computes RMS: $\text{RMS} = \sqrt{\frac{1}{N}\sum_{i=1}^N x_i^2}$
+- Computes dB: $\text{dB} = 20 \log_{10}(\max(\text{RMS}, 10^{-5}))$
+- Updates dynamic noise floor estimation during pauses to compute real-time SNR.
+
+### 4.3 Browser Web Speech API Fallback (for Hindi & English)
 When the user speaks Hindi or English, the client uses the native `SpeechRecognition` / `webkitSpeechRecognition` interface:
 - Indian English model: `en-IN`
 - Indian Hindi model: `hi-IN`
 - Configured with `continuous = true` and `interimResults = true` to capture partial hypotheses during natural speech pauses.
 
-### 4.3 Automated Translation Hook & Reliability Scoring
+### 4.4 Automated Translation Hook & Reliability Scoring
 When a segment is finalized, it is instantly routed to `translateText()`:
 ```typescript
 const trans = await translateText(spoken, sourceLang, targetLang);
@@ -157,7 +172,7 @@ transConfidence = trans.reliability === 'verified' ? 0.98 :
                   trans.reliability === 'dataset' ? 0.92 : 0.85;
 ```
 
-### 4.4 SubRip Subtitle (`.SRT`) Generator (`L162-L191`)
+### 4.5 SubRip Subtitle (`.SRT`) Generator
 Converts raw floating-point seconds into RFC-compliant SRT timestamps:
 $$\text{Seconds: } 74.25 \implies \text{Timestamp: } \mathbf{00:01:14,250}$$
 ```
@@ -186,7 +201,7 @@ Located under [`server/asr/`](file:///d:/SIH/server/asr/):
 ## 6. Language Support & Ethical Guardrails Matrix
 
 | Language | ISO Code | Native Script | ASR Architecture | Operational Status | Ethical Guardrail Policy |
-| :--- | :---: | :--- | :--- | :---: | :--- |
+| :--- | :---: | :--- | :--- | :--- | :--- |
 | **Santali** | `sat` | Ol Chiki (`U+1C50–U+1C7F`) | AI4Bharat IndicConformer ONNX int8 | **PRODUCTION ACTIVE** | Direct phonetic CTC decoding into Ol Chiki script. |
 | **Hindi** | `hin` | Devanagari (`U+0900–U+097F`) | Native Web Speech (`hi-IN`) / Faster-Whisper | **PRODUCTION ACTIVE** | Full native acoustic recognition. |
 | **English** | `eng` | Latin | Native Web Speech (`en-IN`) / Faster-Whisper | **PRODUCTION ACTIVE** | Full Indian-accent English recognition. |
@@ -213,15 +228,22 @@ graph LR
         M2 -->|Subword Fallback| B4[Fuzzy Alignment: 0.85]
     end
 
-    B1 --> OUT[Transparent Provenance Badge on Card]
+    subgraph Human Oversight
+        M3[Frontline Teacher / Field Worker]
+        M3 -->|One-Touch Correction| B5[Local Audit Log Store]
+    end
+
+    B1 --> OUT[Transparent 4-Tier Provenance Badge]
     B2 --> OUT
     B3 --> OUT
     B4 --> OUT
+    B5 --> OUT
 ```
 
 - **Acoustic ASR Confidence (`asrConfidence`):** Directly derived from the neural acoustic model's softmax/CTC output probabilities. Reflects microphone audio clarity and phonetic match.
 - **Translation Confidence (`translationConfidence`):** Derived from the provenance tier of the 6,780-row verified dataset.
-- **`needsReview` Flag:** If acoustic confidence is below $0.70$ or background noise exceeds thresholds, the segment is visibly flagged for field linguist review.
+- **`needsReview` Flag:** If acoustic confidence is below $0.60$ or background noise exceeds thresholds, the segment is visibly flagged for field linguist review.
+- **Correction Audit Store:** Enables offline field corrections without corrupting master models.
 
 ---
 
@@ -229,13 +251,17 @@ graph LR
 
 The Speech-to-Text engine serves as the acoustic foundation for multiple modules across the platform:
 
-1. **Speech-to-Speech (S2S) Walkie-Talkie Mode ([`SpeechToSpeechPage.tsx`](file:///d:/SIH/src/pages/features/SpeechToSpeechPage.tsx)):**  
+1. **Teacher Mode ([`TeacherModePage.tsx`](file:///d:/SIH/src/pages/TeacherModePage.tsx)):**  
+   Powers live classroom projection captions (Hindi teacher voice $\to$ synchronized Ol Chiki student subtitles) with automated lesson vocabulary extraction.
+2. **Field Mode ([`FieldModePage.tsx`](file:///d:/SIH/src/pages/FieldModePage.tsx)):**  
+   One-handed field communication workflow (Speak $\to$ Recognize $\to$ Translate $\to$ Listen) with real-time acoustic feedback for ASHA workers.
+3. **Speech-to-Speech (S2S) Walkie-Talkie Mode ([`SpeechToSpeechPage.tsx`](file:///d:/SIH/src/pages/features/SpeechToSpeechPage.tsx)):**  
    Powers two-way conversational turn-taking (Doctor/Officer $\leftrightarrow$ Tribal Citizen) with automatic speech synthesis on turn completion.
-2. **Voice Dictation in Text-to-Text MT ([`TextToTextPage.tsx`](file:///d:/SIH/src/pages/features/TextToTextPage.tsx)):**  
+4. **Voice Dictation in Text-to-Text MT ([`TextToTextPage.tsx`](file:///d:/SIH/src/pages/features/TextToTextPage.tsx)):**  
    Embedded microphone button allowing field workers to speak their query instead of typing on a mobile keyboard.
-3. **Automated Video Subtitle Generator ([`VideoSubtitlePage.tsx`](file:///d:/SIH/src/pages/features/VideoSubtitlePage.tsx)):**  
+5. **Automated Video Subtitle Generator ([`VideoSubtitlePage.tsx`](file:///d:/SIH/src/pages/features/VideoSubtitlePage.tsx)):**  
    Transcribes uploaded cultural documentaries and educational videos, aligning multilingual `.SRT` files with video frames.
-4. **Vaani Stream ([`VaaniStreamPage.tsx`](file:///d:/SIH/src/pages/VaaniStreamPage.tsx)):**  
+6. **Vaani Stream ([`VaaniStreamPage.tsx`](file:///d:/SIH/src/pages/VaaniStreamPage.tsx)):**  
    Simulates live public broadcast speech captioning for government announcements and community health alerts.
 
 ---

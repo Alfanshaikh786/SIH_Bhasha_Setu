@@ -214,6 +214,11 @@ export const SpeechToSpeechPage: React.FC = () => {
     setGuardrailNotice(null);
     setStatusMessage(null);
 
+    // Turn-lock: Cleanly terminate any running session before initiating new speaker turn
+    if (activeSpeaker || streamerRef.current || recognitionRef.current) {
+      handleStopListening();
+    }
+
     const isA = speaker === 'speakerA';
     const sourceCode = isA ? langA : langB;
     const sourceLangName = isA ? langAObj.name : langBObj.name;

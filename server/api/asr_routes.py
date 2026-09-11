@@ -140,27 +140,40 @@ async def websocket_asr_stream(websocket: WebSocket):
     """
     WebSocket endpoint for real-time microphone audio chunk streaming.
     Accepts raw PCM or WebM chunks and emits interim and finalized transcripts.
+    Hardened with connection safety, max buffer cap, and graceful disconnect cleanup.
     """
     await websocket.accept()
     audio_buffer = bytearray()
+    last_interim_time = 0.0
     engine = asr_router.get_engine("sat")
     if engine is None:
         await websocket.close(code=1011, reason="Santali ASR engine unavailable")
         return
+
+    MAX_BUFFER_BYTES = 16000 * 2 * 120  # 120 seconds max buffer limit (3.84 MB)
 
     try:
         while True:
             message = await websocket.receive()
             if "bytes" in message and message["bytes"]:
                 chunk = message["bytes"]
-                audio_buffer.extend(chunk)
+                if len(audio_buffer) + len(chunk) <= MAX_BUFFER_BYTES:
+                    audio_buffer.extend(chunk)
+                else:
+                    # Buffer overflow guard: slide buffer keeping the most recent 60 seconds
+                    overflow = (len(audio_buffer) + len(chunk)) - MAX_BUFFER_BYTES
+                    del audio_buffer[:overflow]
+                    audio_buffer.extend(chunk)
 
-                # Process every ~0.8s of 16kHz 16-bit mono audio (25,600 bytes)
-                if len(audio_buffer) >= 25600:
+                now = time.perf_counter()
+                # Process interim hypotheses at most once every 0.6s when at least 0.5s audio is buffered
+                if len(audio_buffer) >= 16000 and (now - last_interim_time) >= 0.6:
+                    last_interim_time = now
                     try:
-                        raw_np = np.frombuffer(audio_buffer, dtype=np.int16).astype(np.float32) / 32768.0
-                        if np.max(np.abs(raw_np)) > 0.02:
-                            # Quick recognition on accumulated buffer
+                        # Use latest 3.0 seconds for responsive interim hypothesis
+                        interim_slice = audio_buffer[-96000:] if len(audio_buffer) > 96000 else audio_buffer
+                        raw_np = np.frombuffer(interim_slice, dtype=np.int16).astype(np.float32) / 32768.0
+                        if np.max(np.abs(raw_np)) > 0.015:
                             res = engine.transcribe(raw_np, sample_rate=16000, language="sat")
                             if res.text:
                                 await websocket.send_json({
@@ -172,7 +185,11 @@ async def websocket_asr_stream(websocket: WebSocket):
                         pass
 
             elif "text" in message:
-                data = json.loads(message["text"])
+                try:
+                    data = json.loads(message["text"])
+                except Exception:
+                    data = {}
+
                 if data.get("action") == "finalize":
                     if len(audio_buffer) > 3200:  # at least 100ms
                         try:
@@ -200,8 +217,18 @@ async def websocket_asr_stream(websocket: WebSocket):
                         except Exception as e:
                             await websocket.send_json({
                                 "type": "error",
-                                "message": str(e)
+                                "message": f"Finalization error: {str(e)}"
                             })
+                    else:
+                        await websocket.send_json({
+                            "type": "final",
+                            "text": "",
+                            "duration_sec": 0.0,
+                            "processing_time_ms": 0.0,
+                            "real_time_factor": 0.0,
+                            "segments": [],
+                            "is_final": True
+                        })
                     audio_buffer.clear()
 
                 elif data.get("action") == "reset":
@@ -209,8 +236,12 @@ async def websocket_asr_stream(websocket: WebSocket):
 
     except WebSocketDisconnect:
         pass
+    except (ConnectionResetError, BrokenPipeError):
+        pass
     except Exception as e:
         try:
             await websocket.send_json({"type": "error", "message": str(e)})
         except Exception:
             pass
+    finally:
+        audio_buffer.clear()

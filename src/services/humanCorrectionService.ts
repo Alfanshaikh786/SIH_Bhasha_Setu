@@ -107,3 +107,20 @@ export function exportCorrectionsJSON(): string {
     records
   }, null, 2);
 }
+
+/**
+ * Triggers a browser file download of the human corrections audit trail (.json).
+ */
+export function downloadCorrectionsAuditFile(): void {
+  const jsonStr = exportCorrectionsJSON();
+  const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `bhasha_setu_corrections_audit_${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+

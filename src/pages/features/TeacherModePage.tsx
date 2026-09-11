@@ -249,11 +249,14 @@ export const TeacherModePage: React.FC = () => {
     const a = document.createElement('a');
     a.href = url;
     a.download = `BhashaSetu_Lesson_${sourceLang}_to_${targetLang}.txt`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const handleDownloadSRT = () => {
-    const srtSegments: ASRSegment[] = segments.map((s, i) => ({
+    const srtSegments: ASRSegment[] = segments.map((s) => ({
       id: s.id,
       start_sec: s.startSec,
       end_sec: s.endSec,
@@ -269,7 +272,10 @@ export const TeacherModePage: React.FC = () => {
     const a = document.createElement('a');
     a.href = url;
     a.download = `BhashaSetu_Lesson_Subtitles.srt`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const verifiedCount = segments.filter(s => s.isVerified).length;
