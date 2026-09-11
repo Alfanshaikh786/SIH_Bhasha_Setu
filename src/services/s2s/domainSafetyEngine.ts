@@ -244,7 +244,7 @@ export class DomainSafetyEngine {
     }
 
     // Rule 5: Negation Polarity Inversion Guard
-    const NEGATION_REGEX = /\b(not|never|no|don't|doesn't|didn't|cannot|won't)\b|(नहीं|मत|ना)|(ᱵᱟᱝ|ᱵᱟᱹᱧ|ᱵᱟᱹᱱᱩᱜ)/i;
+    const NEGATION_REGEX = /\b(not|never|no|don't|doesn't|didn't|cannot|won't)\b|(?:^|\s|[.,!?])(नहीं|मत|ना|न)(?:$|\s|[.,!?])|(?:^|\s|[.,!?])(ᱵᱟᱝ|ᱵᱟᱹᱧ|ᱵᱟᱹᱱᱩᱜ)(?:$|\s|[.,!?])/i;
     const srcNeg = NEGATION_REGEX.test(sourceText);
     const tgtNeg = NEGATION_REGEX.test(targetText);
     if (srcNeg && !tgtNeg && targetText.trim().length > 0) {
