@@ -23,6 +23,7 @@ import { TranslationDecisionEngine } from './translationDecisionEngine';
 import { DomainSafetyEngine } from './domainSafetyEngine';
 import { S2STTSEngine } from './ttsEngine';
 import { S2SStorage } from './s2sStorage';
+import { S2SAutoStopController } from './autoStopController';
 
 export interface TurnControllerCallbacks {
   onStateChange?: (state: S2SState, turnId?: string) => void;
@@ -45,11 +46,22 @@ export class S2STurnController {
   private autoSpeak: boolean = true;
   private voiceSpeed: number = 0.9;
   private isStartingTurn: boolean = false;
+  private autoStopController: S2SAutoStopController;
 
   constructor(callbacks: TurnControllerCallbacks = {}) {
     this.callbacks = callbacks;
     this.stateMachine = new S2SStateMachine();
     this.conversationId = `conv-${Date.now()}`;
+
+    // Initialize Auto-Stop Controller
+    this.autoStopController = new S2SAutoStopController({
+      onAutoStop: (_reason, turnId) => {
+        if (this.currentTurnId === turnId && this.stateMachine.isListening()) {
+          this.callbacks.onStatusMessage?.('Processing speech after silence...');
+          this.stopListening();
+        }
+      }
+    });
 
     // Forward state changes
     this.stateMachine.onStateChange((state, _prev, ctx) => {
@@ -65,7 +77,23 @@ export class S2STurnController {
     this.asrAdapter = new S2SASRAdapter({
       onInterim: (text, turnId) => {
         if (this.currentTurnId === turnId && this.activeSpeaker) {
+          this.autoStopController.onSpeechDetected();
           this.callbacks.onInterimText?.(text, this.activeSpeaker);
+        }
+      },
+      onVadActivity: (isSpeaking, rms, turnId) => {
+        if (this.currentTurnId === turnId && this.activeSpeaker) {
+          this.autoStopController.onSpeechFrame(isSpeaking, rms);
+        }
+      },
+      onSpeechStart: (turnId) => {
+        if (this.currentTurnId === turnId && this.activeSpeaker) {
+          this.autoStopController.onSpeechDetected();
+        }
+      },
+      onSpeechEnd: (turnId) => {
+        if (this.currentTurnId === turnId && this.activeSpeaker) {
+          this.autoStopController.onSpeechEnded();
         }
       },
       onFinal: (result) => {
@@ -75,6 +103,7 @@ export class S2STurnController {
       },
       onError: (err) => {
         if (this.currentTurnId === err.turnId) {
+          this.autoStopController.cancel();
           this.stateMachine.emitError(err.code, err.message);
           this.stopTurn();
         }
@@ -144,8 +173,10 @@ export class S2STurnController {
       this.callbacks.onStatusMessage?.(`Listening to ${sourceLangName}... Speak clearly.`);
 
       await this.asrAdapter.startListening(sourceLang, turnId);
+      this.autoStopController.start(turnId);
       return true;
     } catch (e: any) {
+      this.autoStopController.cancel();
       this.stateMachine.emitError('MICROPHONE_ERROR', `Microphone start failed: ${e?.message || e}`);
       this.stopTurn();
       return false;
@@ -158,6 +189,7 @@ export class S2STurnController {
    * Manually stops active listening and triggers finalization.
    */
   public stopListening(): void {
+    this.autoStopController.manualStop();
     if (this.stateMachine.isListening()) {
       this.stateMachine.transitionTo('PROCESSING_AUDIO', { turnId: this.currentTurnId || undefined });
       this.asrAdapter.stopListening();
@@ -168,6 +200,7 @@ export class S2STurnController {
    * Completely stops/aborts any active turn and resets state to IDLE.
    */
   public stopTurn(): void {
+    this.autoStopController.cancel();
     this.asrAdapter.stopListening();
     S2STTSEngine.stop();
     this.stateMachine.abortCurrentTurn();
@@ -176,6 +209,10 @@ export class S2STurnController {
     this.callbacks.onSpeakingTurnIdChange?.(null);
     this.callbacks.onStatusMessage?.(null);
     this.callbacks.onInterimText?.('', 'speakerA');
+  }
+
+  public getAutoStopController(): S2SAutoStopController {
+    return this.autoStopController;
   }
 
   /**

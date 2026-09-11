@@ -234,6 +234,25 @@ export class DomainSafetyEngine {
       domainAssessment.requiresReview = true;
     }
 
+    // Rule 4: Numerical Dosage & Entity Preservation Guard
+    const srcDigits = (sourceText.match(/\b\d+\b/g) || []).sort().join(',');
+    const tgtDigits = (targetText.match(/\b\d+\b/g) || []).sort().join(',');
+    if (srcDigits && tgtDigits && srcDigits !== tgtDigits) {
+      finalTier = 'needs_review';
+      domainAssessment.requiresReview = true;
+      domainAssessment.riskExplanation = `Numerical mismatch detected (source: "${srcDigits}" vs target: "${tgtDigits}"). Review required.`;
+    }
+
+    // Rule 5: Negation Polarity Inversion Guard
+    const NEGATION_REGEX = /\b(not|never|no|don't|doesn't|didn't|cannot|won't)\b|(नहीं|मत|ना)|(ᱵᱟᱝ|ᱵᱟᱹᱧ|ᱵᱟᱹᱱᱩᱜ)/i;
+    const srcNeg = NEGATION_REGEX.test(sourceText);
+    const tgtNeg = NEGATION_REGEX.test(targetText);
+    if (srcNeg && !tgtNeg && targetText.trim().length > 0) {
+      finalTier = 'needs_review';
+      domainAssessment.requiresReview = true;
+      domainAssessment.riskExplanation = 'Negation polarity inversion: source sentence has negative polarity but translation is affirmative.';
+    }
+
     const needsReview = finalTier === 'needs_review';
     domainAssessment.safetyPassed = !needsReview;
 

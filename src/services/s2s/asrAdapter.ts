@@ -18,6 +18,9 @@ export interface ASRAdapterOptions {
   onInterim?: (text: string, turnId: string) => void;
   onFinal?: (result: ASRResultData) => void;
   onError?: (err: S2SError) => void;
+  onVadActivity?: (isSpeaking: boolean, rms: number, turnId: string) => void;
+  onSpeechStart?: (turnId: string) => void;
+  onSpeechEnd?: (turnId: string) => void;
 }
 
 export class S2SASRAdapter {
@@ -116,6 +119,11 @@ export class S2SASRAdapter {
                 this.ws.send(pcm16.buffer);
               }
             },
+            onVadActivity: (isSpeaking, rms) => {
+              if (this.activeTurnId === turnId) {
+                this.options.onVadActivity?.(isSpeaking, rms, turnId);
+              }
+            },
             onError: (err) => {
               this.emitError('MICROPHONE_ERROR', `Microphone capture failed: ${err.message}`, turnId);
             }
@@ -194,20 +202,35 @@ export class S2SASRAdapter {
     try {
       const recognition = new SpeechRecognitionClass();
       recognition.lang = sourceLang === 'eng' ? 'en-IN' : 'hi-IN';
-      recognition.continuous = false;
+      recognition.continuous = true; // Stay active through natural pauses (1-5s)
       recognition.interimResults = true;
 
       let finalChunk = '';
+
+      recognition.onspeechstart = () => {
+        if (this.activeTurnId === turnId) {
+          this.options.onSpeechStart?.(turnId);
+        }
+      };
+
+      recognition.onspeechend = () => {
+        if (this.activeTurnId === turnId) {
+          this.options.onSpeechEnd?.(turnId);
+        }
+      };
 
       recognition.onresult = (event: any) => {
         // TURN-SAFETY CHECK: Drop stale event if turn has expired
         if (this.activeTurnId !== turnId) return;
 
+        // Reset silence countdown on active incoming speech
+        this.options.onSpeechStart?.(turnId);
+
         let interim = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           const trans = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            finalChunk += trans;
+            finalChunk += (finalChunk ? ' ' : '') + trans.trim();
           } else {
             interim += trans;
           }

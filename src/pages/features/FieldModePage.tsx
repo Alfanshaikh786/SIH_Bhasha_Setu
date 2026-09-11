@@ -24,6 +24,7 @@ import { AudioQualityMonitor, AudioQualityStatus } from '../../services/audioQua
 import { saveHumanCorrection } from '../../services/humanCorrectionService';
 import { TranslationDecisionEngine } from '../../services/s2s/translationDecisionEngine';
 import { DomainSafetyEngine } from '../../services/s2s/domainSafetyEngine';
+import { S2SAutoStopController } from '../../services/s2s/autoStopController';
 
 export const FieldModePage: React.FC = () => {
   const [sourceLang, setSourceLang] = useState('sat'); // Default: Santali
@@ -56,6 +57,7 @@ export const FieldModePage: React.FC = () => {
   const recognitionRef = useRef<any>(null);
   const streamerRef = useRef<MicrophoneStreamer | null>(null);
   const qualityMonitorRef = useRef<AudioQualityMonitor | null>(null);
+  const autoStopRef = useRef<S2SAutoStopController | null>(null);
 
   const sourceLangObj = SUPPORTED_LANGUAGES.find(l => l.code === sourceLang) || SUPPORTED_LANGUAGES[0];
   const targetLangObj = SUPPORTED_LANGUAGES.find(l => l.code === targetLang) || SUPPORTED_LANGUAGES[1];
@@ -70,6 +72,7 @@ export const FieldModePage: React.FC = () => {
 
     return () => {
       monitor.stop();
+      autoStopRef.current?.cancel();
       if (streamerRef.current) streamerRef.current.stop();
       if (recognitionRef.current) {
         try { recognitionRef.current.abort(); } catch {}
@@ -137,12 +140,25 @@ export const FieldModePage: React.FC = () => {
     setIsRecording(true);
     setInterimText('');
 
+    // Silence Auto-Stop Controller for Field Mode
+    autoStopRef.current?.cancel();
+    const autoStop = new S2SAutoStopController({
+      onAutoStop: () => {
+        handleStopSpeaking();
+      }
+    });
+    autoStop.start(`field-${Date.now()}`);
+    autoStopRef.current = autoStop;
+
     // Santali: Neural IndicConformer
     if (sourceLang === 'sat') {
       setStatusMessage('Listening in Santali (Ol Chiki)...');
       try {
         const streamer = new MicrophoneStreamer({
-          onInterim: text => setInterimText(text),
+          onInterim: text => {
+            setInterimText(text);
+            autoStopRef.current?.onSpeechDetected();
+          },
           onFinal: (seg: ASRSegment) => {
             if (seg.text) {
               processSpokenInput(seg.text, seg.asr_confidence);
@@ -177,10 +193,11 @@ export const FieldModePage: React.FC = () => {
     try {
       const recognition = new SpeechRecognitionClass();
       recognition.lang = sourceLang === 'eng' ? 'en-IN' : 'hi-IN';
-      recognition.continuous = false;
+      recognition.continuous = true;
       recognition.interimResults = true;
 
       recognition.onresult = (e: any) => {
+        autoStopRef.current?.onSpeechDetected();
         let interim = '';
         let final = '';
         for (let i = e.resultIndex; i < e.results.length; ++i) {
@@ -205,6 +222,10 @@ export const FieldModePage: React.FC = () => {
 
   const handleStopSpeaking = () => {
     setIsRecording(false);
+    if (autoStopRef.current) {
+      autoStopRef.current.manualStop();
+      autoStopRef.current = null;
+    }
     if (streamerRef.current) {
       streamerRef.current.stop();
       streamerRef.current = null;

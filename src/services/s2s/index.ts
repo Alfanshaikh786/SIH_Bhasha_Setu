@@ -6,6 +6,7 @@ export * from './s2sTypes';
 export * from './languageRegistry';
 export * from './s2sStateMachine';
 export * from './audioPipeline';
+export * from './autoStopController';
 export * from './asrAdapter';
 export * from './translationDecisionEngine';
 export * from './domainSafetyEngine';
