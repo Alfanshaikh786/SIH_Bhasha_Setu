@@ -26,7 +26,7 @@ export const TextToSpeechPage: React.FC = () => {
         {/* Header */}
         <div className="w-full py-6 flex flex-col items-center text-center">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-green-50 border border-[#d1ead4] text-xs font-bold text-[#14532d] mb-3">
-            <Sparkles className="w-3.5 h-3.5 text-[#249144]" /> Neural Speech Synthesis (TTS)
+            <Sparkles className="w-3.5 h-3.5 text-[#249144]" /> Phonetic Speech Synthesis (Web Speech API)
           </div>
           <h1 className="domine-bold text-3xl sm:text-4xl md:text-5xl font-semibold leading-snug text-gray-900">
             Text to Speech (TTS)
@@ -35,8 +35,16 @@ export const TextToSpeechPage: React.FC = () => {
             <div className="absolute left-1/2 -translate-x-1/2 -top-[1px] h-[3px] w-16 bg-[#86c498] rounded-full"></div>
           </div>
           <p className="mt-3 max-w-2xl text-sm sm:text-base text-slate-500">
-            Listen to written documents and phrases rendered in natural-sounding tribal phonetic voices.
+            Listen to written phrases rendered via verified phonetic transliteration guides using browser speech engines.
           </p>
+        </div>
+
+        {/* TTS Linguistic Honesty Notice */}
+        <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900 flex items-start gap-3">
+          <span className="text-base">📢</span>
+          <div>
+            <strong className="font-semibold text-amber-950">Linguistic Transparency Notice:</strong> Native tribal neural voice models (Santali, Mundari, Ho) are currently unavailable in browser speech engines. Bhasha Setu synthesizes authentic pronunciations using Roman phonetic transliteration guides through Indian English and Hindi system voices.
+          </div>
         </div>
 
         {/* Studio Box */}
@@ -62,9 +70,9 @@ export const TextToSpeechPage: React.FC = () => {
 
             <div className="flex items-center gap-4 text-xs text-slate-500">
               <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-[#249144]"></span> Neural HD Model
+                <span className="w-2 h-2 rounded-full bg-[#249144]"></span> Web Speech Engine
               </span>
-              <span>24 kHz Studio Audio</span>
+              <span>Phonetic System Voice</span>
             </div>
           </div>
 

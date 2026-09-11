@@ -75,11 +75,11 @@ export const TRANSLATION_CAPABILITIES: LanguagePairCapability[] = [
     src: 'english', tgt: 'santali',
     label: 'English → Santali',
     fullSentence: true,
-    provider: 'Google Translate Web Bridge (Unofficial)',
+    provider: 'Verified Santali Dataset & SQLite WASM',
     status: 'verified',
     offlineMode: 'dataset',
     vocabularyAssistance: true,
-    notes: 'Google neural outputs genuine Ol Chiki script. Offline: 6,780-row Santali Dataset.'
+    notes: 'Primary: 6,780-entry verified parallel corpus & SQLite WASM. Online fallback: Neural Web Bridge.'
   },
   {
     src: 'english', tgt: 'mundari',
@@ -117,11 +117,11 @@ export const TRANSLATION_CAPABILITIES: LanguagePairCapability[] = [
     src: 'hindi', tgt: 'santali',
     label: 'Hindi → Santali',
     fullSentence: true,
-    provider: 'Google Translate Web Bridge (Unofficial)',
+    provider: 'Verified Santali Dataset & SQLite WASM',
     status: 'verified',
     offlineMode: 'dataset',
     vocabularyAssistance: true,
-    notes: 'Google neural outputs genuine Ol Chiki script. Offline: Santali Dataset.'
+    notes: 'Primary: 6,780-entry verified parallel corpus & SQLite WASM. Online fallback: Neural Web Bridge.'
   },
   {
     src: 'hindi', tgt: 'mundari',
@@ -149,21 +149,21 @@ export const TRANSLATION_CAPABILITIES: LanguagePairCapability[] = [
     src: 'santali', tgt: 'english',
     label: 'Santali → English',
     fullSentence: true,
-    provider: 'Google Translate Web Bridge (Unofficial)',
+    provider: 'Verified Santali Dataset & SQLite WASM',
     status: 'verified',
     offlineMode: 'dataset',
     vocabularyAssistance: true,
-    notes: 'Google neural reads Ol Chiki and outputs English. Offline: Santali Dataset.'
+    notes: 'Primary: 6,780-entry verified parallel corpus & SQLite WASM. Online fallback: Neural Web Bridge.'
   },
   {
     src: 'santali', tgt: 'hindi',
     label: 'Santali → Hindi',
     fullSentence: true,
-    provider: 'Google Translate Web Bridge (Unofficial)',
+    provider: 'Verified Santali Dataset & SQLite WASM',
     status: 'verified',
     offlineMode: 'dataset',
     vocabularyAssistance: true,
-    notes: 'Google neural reads Ol Chiki and outputs Hindi. Offline: Santali Dataset.'
+    notes: 'Primary: 6,780-entry verified parallel corpus & SQLite WASM. Online fallback: Neural Web Bridge.'
   },
   {
     src: 'santali', tgt: 'mundari',
@@ -348,6 +348,95 @@ export function detectOutputScript(text: string): {
   }
 
   return { scriptName, hasOlChiki, hasDevanagari, hasLatin, dominantScript };
+}
+
+export interface ScriptIntegrityReport {
+  isValid: boolean;
+  targetScript: 'ol_chiki' | 'latin' | 'devanagari';
+  dominantScript: string;
+  hasOlChiki: boolean;
+  hasLatin: boolean;
+  hasDevanagari: boolean;
+  unwantedScriptDetected: boolean;
+  details: string;
+}
+
+/**
+ * Strict script-integrity validator: verifies that translated text contains only the expected orthography.
+ * For Ol Chiki: flags any unwanted Latin letters or Devanagari characters.
+ * For Devanagari: flags any unwanted Ol Chiki or Latin letters.
+ * For Latin: flags any unwanted Ol Chiki or Devanagari characters.
+ */
+export function validateScriptIntegrity(
+  text: string,
+  targetScript: 'ol_chiki' | 'latin' | 'devanagari'
+): ScriptIntegrityReport {
+  if (!text || !text.trim()) {
+    return {
+      isValid: true,
+      targetScript,
+      dominantScript: 'empty',
+      hasOlChiki: false,
+      hasLatin: false,
+      hasDevanagari: false,
+      unwantedScriptDetected: false,
+      details: 'Empty text'
+    };
+  }
+
+  const olChikiCount = (text.match(/[\u1C50-\u1C7F]/g) || []).length;
+  const devanagariCount = (text.match(/[\u0900-\u097F]/g) || []).length;
+  const latinCount = (text.match(/[a-zA-Z]/g) || []).length;
+
+  const hasOlChiki = olChikiCount > 0;
+  const hasDevanagari = devanagariCount > 0;
+  const hasLatin = latinCount > 0;
+
+  const scriptInfo = detectOutputScript(text);
+
+  let isValid = true;
+  let unwantedScriptDetected = false;
+  let details = 'Valid script representation';
+
+  if (targetScript === 'ol_chiki') {
+    if (hasLatin || hasDevanagari) {
+      isValid = false;
+      unwantedScriptDetected = true;
+      const unwanted: string[] = [];
+      if (hasLatin) unwanted.push(`${latinCount} Latin character(s)`);
+      if (hasDevanagari) unwanted.push(`${devanagariCount} Devanagari character(s)`);
+      details = `Ol Chiki output contaminated with ${unwanted.join(' and ')}`;
+    }
+  } else if (targetScript === 'devanagari') {
+    if (hasOlChiki || hasLatin) {
+      isValid = false;
+      unwantedScriptDetected = true;
+      const unwanted: string[] = [];
+      if (hasOlChiki) unwanted.push(`${olChikiCount} Ol Chiki character(s)`);
+      if (hasLatin) unwanted.push(`${latinCount} Latin character(s)`);
+      details = `Devanagari output contaminated with ${unwanted.join(' and ')}`;
+    }
+  } else if (targetScript === 'latin') {
+    if (hasOlChiki || hasDevanagari) {
+      isValid = false;
+      unwantedScriptDetected = true;
+      const unwanted: string[] = [];
+      if (hasOlChiki) unwanted.push(`${olChikiCount} Ol Chiki character(s)`);
+      if (hasDevanagari) unwanted.push(`${devanagariCount} Devanagari character(s)`);
+      details = `Roman phonetic output contaminated with ${unwanted.join(' and ')}`;
+    }
+  }
+
+  return {
+    isValid,
+    targetScript,
+    dominantScript: scriptInfo.scriptName,
+    hasOlChiki,
+    hasLatin,
+    hasDevanagari,
+    unwantedScriptDetected,
+    details
+  };
 }
 
 /**

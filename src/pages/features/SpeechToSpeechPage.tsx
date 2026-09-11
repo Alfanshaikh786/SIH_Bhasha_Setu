@@ -369,7 +369,7 @@ export const SpeechToSpeechPage: React.FC = () => {
         <div className="w-full py-4 flex flex-col items-center text-center">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-100/70 border border-emerald-200 text-xs font-bold text-[#14532d] mb-3 shadow-2xs">
             <Radio className="w-3.5 h-3.5 text-[#249144] animate-pulse" />
-            <span>Real-Time Neural Speech-to-Speech & Dialogue</span>
+            <span>Real-Time Voice-to-Voice Dialogue & Translation</span>
           </div>
 
           <h1 className="domine-bold text-3xl sm:text-4xl md:text-5xl font-bold leading-tight text-slate-900">

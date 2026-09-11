@@ -202,7 +202,7 @@ export async function queryTranslationFromDb(
   const lower = clean.toLowerCase().replace(/[?!.,;]/g, '').trim();
 
   try {
-    // 1. Exact Match on source column (case-insensitive)
+    // 1. Exact Match on source column (case-insensitive, with/without punctuation)
     const exactQuery = `
       SELECT id, english, hindi, santali, santali_roman, ho, mundari, category, verified 
       FROM translations 
@@ -211,20 +211,23 @@ export async function queryTranslationFromDb(
          OR LOWER(TRIM(hindi)) = ? 
          OR LOWER(TRIM(santali)) = ? 
          OR LOWER(TRIM(santali_roman)) = ?
+         OR LOWER(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(${srcCol}), '.', ''), '?', ''), '!', ''), ',', '')) = ?
+         OR LOWER(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(english), '.', ''), '?', ''), '!', ''), ',', '')) = ?
       LIMIT 1;
     `;
 
+    const cleanWithoutPunct = clean.toLowerCase().replace(/[?!.,;:()|]/g, '').trim();
+    const cleanWithPunct = clean.toLowerCase().trim();
+
     const exactStmt = db.prepare(exactQuery);
-    exactStmt.bind([lower, lower, lower, lower, lower]);
+    exactStmt.bind([cleanWithPunct, cleanWithPunct, cleanWithPunct, cleanWithPunct, cleanWithPunct, cleanWithoutPunct, cleanWithoutPunct]);
 
     if (exactStmt.step()) {
       const row = exactStmt.getAsObject() as unknown as TranslationRow;
       exactStmt.free();
 
-      let targetText = (row[targetCol] as string) || (row.santali as string) || row.english;
-      if (targetLang === 'sat' && row.santali_roman && !targetText.includes('(')) {
-        targetText = `${row.santali} (${row.santali_roman})`;
-      }
+      // Return canonical target text directly — NEVER append (${row.santali_roman}) into targetText
+      const targetText = (row[targetCol] as string) || (row.santali as string) || row.english;
 
       return {
         targetText,
@@ -235,7 +238,7 @@ export async function queryTranslationFromDb(
     }
     exactStmt.free();
 
-    // 2. Fuzzy Prefix / Contains Match with LIKE
+    // 2. Near-Exact Fuzzy Match with Strict Word Count Guard (Prevents short input matching long paragraph)
     const fuzzyQuery = `
       SELECT id, english, hindi, santali, santali_roman, ho, mundari, category, verified 
       FROM translations 
@@ -244,28 +247,32 @@ export async function queryTranslationFromDb(
          OR hindi LIKE ? 
          OR santali LIKE ? 
          OR santali_roman LIKE ?
-      LIMIT 1;
+      LIMIT 5;
     `;
 
-    const fuzzyPattern = `%${lower}%`;
+    const fuzzyPattern = `%${cleanWithoutPunct}%`;
     const fuzzyStmt = db.prepare(fuzzyQuery);
     fuzzyStmt.bind([fuzzyPattern, fuzzyPattern, fuzzyPattern, fuzzyPattern, fuzzyPattern]);
 
-    if (fuzzyStmt.step()) {
+    const qWords = cleanWithoutPunct.split(/\s+/).filter(Boolean);
+
+    while (fuzzyStmt.step()) {
       const row = fuzzyStmt.getAsObject() as unknown as TranslationRow;
-      fuzzyStmt.free();
+      const rowMatchedText = ((row[srcCol] as string) || row.english || '').toLowerCase().replace(/[?!.,;:()|]/g, '').trim();
+      const rWords = rowMatchedText.split(/\s+/).filter(Boolean);
+      const lengthRatio = Math.min(qWords.length, rWords.length) / Math.max(qWords.length, rWords.length);
 
-      let targetText = (row[targetCol] as string) || (row.santali as string) || row.english;
-      if (targetLang === 'sat' && row.santali_roman && !targetText.includes('(')) {
-        targetText = `${row.santali} (${row.santali_roman})`;
+      // Strict length-guard: Only allow match if token count is very close (prevents 3-word query matching 13-word paragraph)
+      if (lengthRatio >= 0.8) {
+        fuzzyStmt.free();
+        const targetText = (row[targetCol] as string) || (row.santali as string) || row.english;
+        return {
+          targetText,
+          roman: row.santali_roman,
+          row,
+          confidence: 0.95
+        };
       }
-
-      return {
-        targetText,
-        roman: row.santali_roman,
-        row,
-        confidence: 0.95
-      };
     }
     fuzzyStmt.free();
 

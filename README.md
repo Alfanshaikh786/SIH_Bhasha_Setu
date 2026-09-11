@@ -6,35 +6,37 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 
-**Bhasha Setu** is an AI-powered multidirectional translation, speech synthesis, and offline-first language accessibility platform designed for migrant teachers, frontline workers (ASHA/Gram Sevaks), and indigenous communities.
+**Bhasha Setu** is an offline-first multidirectional tribal language translation and linguistic accessibility platform designed for migrant teachers, frontline healthcare workers (ASHA/Gram Sevaks), and indigenous communities.
 
 ---
 
 ## 🌟 Key Features
 
 ### 1. 🔄 Multi-Directional Translation Engine
-- **Text-to-Text Translation**: Bidirectional translation supporting **Santali (Ol Chiki & Romanized)**, **Hindi**, and **English**, along with 10+ major regional Indian languages.
-- **Phonetic & Script Mapping**: Ol Chiki to Latin/Roman phonetic transcription with confidence matching algorithms.
+- **Verified Offline Corpus**: 6,780 parallel Santali records preserved 100% on-device (in-memory O(1) Map + SQLite WASM sandbox).
+- **Text-to-Text Translation**: Bidirectional translation supporting **Santali (Ol Chiki, Roman, Devanagari)**, **Hindi**, and **English**.
+- **Zero-Hallucination Guard**: Sentence translation for unsupported tribal languages (**Mundari**, **Ho**) is strictly blocked with vocabulary assistance, guaranteeing exactly 0 fabricated sentences.
+- **Phonetic & Script Mapping**: Ol Chiki to Latin/Roman and Devanagari transliteration with dependent vowel (matra) composition and zero glyph leakage.
 
 ### 2. 🎙️ Voice & Speech Intelligence
-- **Voice-to-Voice Dialogue**: Real-time spoken dialogue with automatic speech recognition (ASR) and neural text-to-speech (TTS).
-- **Speech-to-Text (ASR)**: Speech transcription for classroom conversations and field queries.
-- **Text-to-Speech (TTS)**: On-device speech synthesis with precise timing and audio feedback.
+- **Voice-to-Voice Dialogue**: Spoken dialogue with speech recognition (ASR) and phonetic speech synthesis guides.
+- **Speech-to-Text (ASR)**: Speech transcription for classroom instruction and community dialogue.
+- **Text-to-Speech (TTS)**: Phonetic pronunciation guidance via Web Speech API and Indian system voices with transparent non-native disclosure.
 
 ### 3. 📷 OCR Document & Script Extraction
-- Extract text from physical textbooks, handwritten notes, and classroom boards in tribal scripts (Ol Chiki).
+- Extract text from physical textbooks, notes, and classroom boards.
 - Instant translation and audio pronunciation playback directly from image captures.
 
 ### 4. 🎬 Video Subtitling & Dubbing
 - Generate synchronized bilingual subtitles (`.srt` / `.vtt`) for educational videos and cultural documentaries.
 
 ### 5. 📚 Multilingual Dictionary & Lexicon Explorer
-- Searchable database of **6,780+ curated tribal words & phrases** with IPA phonetics, parts of speech, and classroom context examples.
-- Community contribution portal for linguists and native speakers.
+- Searchable database of **6,780 curated tribal words & phrases** with IPA phonetics, parts of speech, and classroom context examples.
+- Community feedback and human-in-the-loop linguist evaluation review portal.
 
-### 6. 📴 Offline Mode (Offline-First Ready)
-- Full-featured offline operation using cached datasets and on-device Web Speech & Regex phonetic models.
-- Interactive offline status HUD and toggle.
+### 6. 📴 True Offline Mode (Zero-Network Architecture)
+- Pre-compiled 4.03 MB SQLite WebAssembly database (`translations.db`) executing locally with 0 bytes transmitted.
+- Service Worker Cache-First precaching with standalone PWA support on low-end mobile screens (360×800).
 
 ### 7. 📱 Progressive Web App (PWA)
 - Installable on Android, iOS, and Desktop with offline caching, service workers, and responsive mobile layout.

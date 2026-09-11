@@ -198,8 +198,8 @@ def search_sentences(
                 COALESCE(hi.text_content, '') as hindi,
                 COALESCE(sat.text_content, '') as santali,
                 sat.pronunciation as santali_roman,
-                COALESCE(ho.text_content, sat.text_content, '') as ho,
-                COALESCE(unr.text_content, sat.text_content, '') as mundari,
+                COALESCE(ho.text_content, '') as ho,
+                COALESCE(unr.text_content, '') as mundari,
                 COALESCE(c.category_name, 'General') as category,
                 CASE WHEN ts.verified THEN 'Yes' ELSE 'No' END as verified
             FROM translation_sets ts

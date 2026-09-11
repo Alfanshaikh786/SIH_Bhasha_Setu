@@ -1,6 +1,6 @@
 import { SUPPORTED_LANGUAGES } from '../data/languages';
 import { DICTIONARY_ENTRIES } from '../data/dictionaryData';
-import { findSantaliMatch, normalizeText, lookupWord, SANTALI_DATASET, CORE_VOCABULARY } from '../data/santaliDataset';
+import { findSantaliMatch, normalizeText, lookupWord, SANTALI_DATASET, CORE_VOCABULARY, lookupExactDatasetEntry } from '../data/santaliDataset';
 import { queryTranslationFromDb } from './sqliteService';
 import { 
   SupportedLanguage, 
@@ -18,6 +18,20 @@ import {
   lookupVocabularyAssistance,
   TranslationStatus
 } from './translationCapabilities';
+import { TranslationEvidence } from './translationEvidence';
+import {
+  ITranslationProvider,
+  PhraseBankProvider,
+  localDbProvider,
+  santaliDatasetProvider,
+  onDeviceModelProvider,
+  onlineProvider,
+  setSimulatedOffline,
+  getSimulatedOffline,
+  ProviderTranslationResult
+} from './translationProviders';
+
+export { setSimulatedOffline, getSimulatedOffline };
 
 export interface TranslationResult {
   text: string;
@@ -41,6 +55,10 @@ export interface TranslationResult {
   /** Word-level vocabulary assistance results (only for unsupported pairs) */
   vocabularyAssistance?: { word: string; meaning: string }[];
   tokensCount: number;
+  /** Full auditable translation evidence and provenance */
+  evidence?: TranslationEvidence;
+  /** Domain or thematic context */
+  domain?: string;
 }
 
 // Ol Chiki Unicode mapping to Devanagari and Roman phonetics
@@ -76,6 +94,17 @@ export const OL_CHIKI_TO_PHONETIC: Record<string, { hi: string; en: string }> = 
   'ᱵ': { hi: 'ब', en: 'b' },
   'ᱶ': { hi: 'ँ', en: 'nh' },
   'ᱷ': { hi: 'ह', en: 'h' },
+  // Digits (U+1C50 - U+1C59)
+  '᱐': { hi: '०', en: '0' },
+  '᱑': { hi: '१', en: '1' },
+  '᱒': { hi: '२', en: '2' },
+  '᱓': { hi: '३', en: '3' },
+  '᱔': { hi: '४', en: '4' },
+  '᱕': { hi: '५', en: '5' },
+  '᱖': { hi: '६', en: '6' },
+  '᱗': { hi: '७', en: '7' },
+  '᱘': { hi: '८', en: '8' },
+  '᱙': { hi: '९', en: '9' },
   // Modifiers
   'ᱸ': { hi: 'ं', en: 'n' },
   'ᱹ': { hi: '', en: '' },
@@ -87,8 +116,47 @@ export const OL_CHIKI_TO_PHONETIC: Record<string, { hi: string; en: string }> = 
   '᱿': { hi: '॥', en: '.' }
 };
 
+// Ol Chiki Vowel system with independent vs dependent (matra) signs
+const OL_CHIKI_VOWELS: Record<string, { ind: string; dep: string; en: string }> = {
+  'ᱚ': { ind: 'ऑ', dep: 'ॉ', en: 'o' },
+  'ᱟ': { ind: 'आ', dep: 'ा', en: 'a' },
+  'ᱤ': { ind: 'इ', dep: 'ि', en: 'i' },
+  'ᱩ': { ind: 'उ', dep: 'ु', en: 'u' },
+  'ᱮ': { ind: 'ए', dep: 'े', en: 'e' },
+  'ᱳ': { ind: 'ओ', dep: 'ो', en: 'o' }
+};
+
+// Ol Chiki Consonants
+const OL_CHIKI_CONSONANTS: Record<string, { hi: string; en: string }> = {
+  'ᱛ': { hi: 'त', en: 't' },
+  'ᱜ': { hi: 'ग', en: 'g' },
+  'ᱝ': { hi: 'ं', en: 'ng' },
+  'ᱞ': { hi: 'ल', en: 'l' },
+  'ᱠ': { hi: 'क', en: 'k' },
+  'ᱡ': { hi: 'ज', en: 'j' },
+  'ᱢ': { hi: 'म', en: 'm' },
+  'ᱣ': { hi: 'व', en: 'w' },
+  'ᱥ': { hi: 'स', en: 's' },
+  'ᱦ': { hi: 'ह', en: 'h' },
+  'ᱧ': { hi: 'ञ', en: 'ny' },
+  'ᱨ': { hi: 'र', en: 'r' },
+  'ᱪ': { hi: 'च', en: 'ch' },
+  'ᱫ': { hi: 'द', en: 'd' },
+  'ᱬ': { hi: 'ण', en: 'n' },
+  'ᱭ': { hi: 'य', en: 'y' },
+  'ᱯ': { hi: 'प', en: 'p' },
+  'ᱰ': { hi: 'ड', en: 'd' },
+  'ᱱ': { hi: 'न', en: 'n' },
+  'ᱲ': { hi: 'ड़', en: 'r' },
+  'ᱴ': { hi: 'ट', en: 't' },
+  'ᱵ': { hi: 'ब', en: 'b' },
+  'ᱶ': { hi: 'ँ', en: 'nh' },
+  'ᱷ': { hi: 'ह', en: 'h' }
+};
+
 /**
- * Transliterates Ol Chiki script text into Devanagari phonetics for natural Indian TTS
+ * Transliterates Ol Chiki script text into Devanagari phonetics with proper matra and digit handling.
+ * Guarantees zero leakage of Ol Chiki characters into Devanagari output.
  */
 export function transliterateOlChikiToDevanagari(text: string): string {
   // Check if known Santali common phrases exist
@@ -117,16 +185,34 @@ export function transliterateOlChikiToDevanagari(text: string): string {
     return knownPhrases[trimmed];
   }
 
-  // Word-by-word conversion
   let result = '';
+  let prevWasConsonant = false;
+
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
-    if (OL_CHIKI_TO_PHONETIC[ch]) {
+
+    if (OL_CHIKI_VOWELS[ch]) {
+      // Use dependent matra if following consonant; otherwise independent vowel
+      result += prevWasConsonant ? OL_CHIKI_VOWELS[ch].dep : OL_CHIKI_VOWELS[ch].ind;
+      prevWasConsonant = false;
+    } else if (OL_CHIKI_CONSONANTS[ch]) {
+      result += OL_CHIKI_CONSONANTS[ch].hi;
+      prevWasConsonant = true;
+    } else if (OL_CHIKI_TO_PHONETIC[ch]) {
       result += OL_CHIKI_TO_PHONETIC[ch].hi;
+      // Modifiers like gahuḍlā (ᱹ) do not break consonant status
+      if (ch !== 'ᱹ' && ch !== 'ᱸ' && ch !== 'ᱺ') {
+        prevWasConsonant = false;
+      }
     } else {
       result += ch;
+      prevWasConsonant = false;
     }
   }
+
+  // Strict Sanitization Guard: Guarantee zero Ol Chiki glyphs leak into Devanagari output
+  result = result.replace(/[\u1C50-\u1C7F]/g, '');
+
   return result;
 }
 
@@ -144,6 +230,109 @@ export function transliterateOlChikiToRoman(text: string): string {
     }
   }
   return res;
+}
+
+/**
+ * Transliterates Romanized Santali into phonetic Devanagari representation.
+ */
+export function transliterateRomanSantaliToDevanagari(text: string): string {
+  if (!text || !text.trim()) return '';
+
+  const COMMON_ROMAN_SANTALI: Record<string, string> = {
+    'johar': 'जोहार',
+    'sarhaw': 'सारहाव',
+    'iny': 'इञ',
+    'ing': 'इञ',
+    'asra': 'आसड़ा',
+    'senog': 'सेनॉग',
+    'kanany': 'कानाञ',
+    'kana': 'काना',
+    'nui': 'नुय',
+    'do': 'दॉ',
+    'gai': 'गाय',
+    'kanay': 'कानाय',
+    'dag': 'दाग',
+    'bir': 'बीर',
+    'ale': 'आले',
+    'alear': 'आलेयाग',
+    'atu': 'आतु',
+    'disom': 'दिसम',
+    'marang': 'मरांग',
+    'buru': 'बुरु',
+    'serma': 'सेरमा',
+    'setag': 'सेताग',
+    'nida': 'ञिंदा',
+    'bes': 'बेस',
+    'ge': 'गे',
+    'menama': 'मेनामा',
+    'menanya': 'मेनाञा',
+    'menag-a': 'मेनागा',
+    'dangra': 'डांगरा',
+    'mihu': 'मिहू',
+    'bitkil': 'बिटकिल',
+    'kada': 'काडा',
+    'hopon': 'होपोन',
+    'gari': 'गाड़ी',
+    'hanu': 'हानू'
+  };
+
+  const words = text.split(/(\s+|[.,!?;:()]+)/);
+  const result = words.map(w => {
+    const lower = w.toLowerCase().trim();
+    if (COMMON_ROMAN_SANTALI[lower]) {
+      return COMMON_ROMAN_SANTALI[lower];
+    }
+    return w;
+  }).join('');
+
+  // Strict regex sanitization
+  return result.replace(/[\u1C50-\u1C7F]/g, '');
+}
+
+/**
+ * Transliterates Santali output text into requested orthographic or phonetic script representation
+ */
+export function transliterateSantaliToScript(
+  text: string,
+  targetScript: 'ol_chiki' | 'latin' | 'devanagari'
+): string {
+  if (!text || !text.trim()) return '';
+  const trimmed = text.trim();
+
+  // Ol Chiki native representation
+  if (targetScript === 'ol_chiki') {
+    const parenIdx = trimmed.indexOf('(');
+    if (parenIdx > 0 && /[\u1C50-\u1C7F]/.test(trimmed.slice(0, parenIdx))) {
+      return trimmed.slice(0, parenIdx).trim();
+    }
+    return trimmed;
+  }
+
+  // Roman / Latin phonetic representation
+  if (targetScript === 'latin') {
+    const parenMatch = trimmed.match(/\(([^)]+)\)/);
+    if (parenMatch && parenMatch[1]) {
+      return parenMatch[1].trim();
+    }
+    return transliterateOlChikiToRoman(trimmed);
+  }
+
+  // Devanagari phonetic representation
+  if (targetScript === 'devanagari') {
+    const parenIdx = trimmed.indexOf('(');
+    const sourceToConvert = (parenIdx > 0 && /[\u1C50-\u1C7F]/.test(trimmed.slice(0, parenIdx)))
+      ? trimmed.slice(0, parenIdx).trim()
+      : trimmed;
+
+    // If text contains Ol Chiki, use Ol Chiki to Devanagari converter
+    if (/[\u1C50-\u1C7F]/.test(sourceToConvert)) {
+      return transliterateOlChikiToDevanagari(sourceToConvert);
+    }
+    // If text is Romanized Santali, transliterate Roman to Devanagari
+    return transliterateRomanSantaliToDevanagari(sourceToConvert);
+  }
+
+  return trimmed;
 }
 
 // Comprehensive Santali (Ol Chiki & Romanized) to English vocabulary & grammar mapping
@@ -648,6 +837,17 @@ const TRANSLATION_MAP: Record<string, Record<string, string>> = {
   }
 };
 
+// Formalized Translation Provider Pipeline
+export const phraseBankProvider = new PhraseBankProvider(TRANSLATION_MAP);
+
+export const translationProviders: ITranslationProvider[] = [
+  phraseBankProvider,
+  localDbProvider,
+  santaliDatasetProvider,
+  onDeviceModelProvider,
+  onlineProvider
+];
+
 // Memory cache for instant repeated translations
 const translationCache = new Map<string, TranslationResult>();
 
@@ -683,181 +883,46 @@ function logTranslationDebug(
 }
 
 /**
- * GOOGLE TRANSLATE WEB BRIDGE — IMPORTANT DISCLAIMER:
- *   Endpoint: translate.googleapis.com/translate_a/single?client=gtx
- *   This is an UNOFFICIAL, UNAUTHENTICATED public web bridge used by the Google Translate browser
- *   extension — NOT the official Google Cloud Translation API (cloud.google.com/translate).
- *   - No API key is required or used.
- *   - No official rate limit, SLA, or stability guarantee.
- *   - Suitable for prototype/SIH demonstration; replace before production deployment.
- *   - Labeled in all UI surfaces as: "Google Translate Web Bridge (Unofficial)"
- *
- * Supported language pairs (empirically verified 2026-09-05):
- *   en ↔ hi   (English ↔ Hindi)   — verified, high quality
- *   en ↔ sat  (English ↔ Santali) — verified, Ol Chiki output
- *   hi ↔ sat  (Hindi ↔ Santali)   — verified, Ol Chiki output
- *   hoc / unr — HTTP 400, NOT SUPPORTED
- */
-async function fetchOnlineTranslation(
-  text: string,
-  sourceLang: SupportedLanguage,
-  targetLang: SupportedLanguage
-): Promise<{ text: string; provider: string } | null> {
-  // Guard: only attempt online translation for registry-verified pairs
-  const cap = getCapability(sourceLang, targetLang);
-  if (!cap || !cap.fullSentence || cap.provider === null) return null;
-
-  const srcCode2 = getLanguageCode2(sourceLang);
-  const tgtCode2 = getLanguageCode2(targetLang);
-
-  // 1. Primary: Google Translate Web Bridge (unofficial)
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-    const googleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${srcCode2}&tl=${tgtCode2}&dt=t&q=${encodeURIComponent(text)}`;
-    const gRes = await fetch(googleUrl, { signal: controller.signal });
-    clearTimeout(timeoutId);
-
-    if (gRes.ok) {
-      const gData = await gRes.json();
-      if (Array.isArray(gData) && Array.isArray(gData[0])) {
-        const translated = gData[0]
-          .map((part: any) => (Array.isArray(part) && typeof part[0] === 'string' ? part[0] : ''))
-          .join('')
-          .trim();
-
-        if (translated && translated.toLowerCase() !== text.toLowerCase()) {
-          return {
-            text: translated,
-            provider: 'Google Translate Web Bridge (Unofficial)'
-          };
-        }
-      }
-    }
-  } catch (gErr) {
-    console.warn('[Translation] Google Translate Web Bridge unavailable, trying MyMemory:', gErr);
-  }
-
-  // 2. Secondary Fallback: MyMemory Web Bridge
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 7000);
-
-    const memoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${srcCode2}|${tgtCode2}`;
-    const mRes = await fetch(memoryUrl, { signal: controller.signal });
-    clearTimeout(timeoutId);
-
-    if (mRes.ok) {
-      const mData = await mRes.json();
-      if (mData?.responseStatus === 200 && mData?.responseData?.translatedText) {
-        const translated = decodeHtmlEntities(mData.responseData.translatedText).trim();
-        if (
-          translated &&
-          !translated.includes('IS AN INVALID TARGET LANGUAGE') &&
-          !translated.includes('MYMEMORY WARNING') &&
-          !translated.includes('PLEASE SPECIFY A VALID') &&
-          translated.toLowerCase() !== text.toLowerCase()
-        ) {
-          return {
-            text: translated,
-            provider: 'MyMemory Web Bridge'
-          };
-        }
-      }
-    }
-  } catch (mErr) {
-    console.warn('[Translation] MyMemory Web Bridge unavailable:', mErr);
-  }
-
-  return null;
-}
-
-/**
- * Single segment / clause translation across verified tiers:
- * Tier 1: Bilingual Phrase Bank (exact phrase match)
- * Tier 2: Classroom SQLite Database (6,780 verified rows)
- * Tier 3: Santali Linguistic Dataset
- * Tier 4: Online Neural Translation Bridge (registry-gated)
- *
- * Vocabulary Composition is NO LONGER part of the sentence translation pipeline.
- * It is returned as a separate `vocabularyAssistance` field in translateText().
+ * Single segment / clause translation across verified provider pipeline:
+ * 1. Bilingual Phrase Bank (instant colloquial match)
+ * 2. Classroom SQLite Database (6,780 verified rows)
+ * 3. Santali Linguistic Dataset (In-Memory 6,780 verified entries, O(1) hash maps)
+ * 4. On-Device Edge Model (future-ready architecture)
+ * 5. Online Neural Bridge (capability-gated, timeout-protected, offline-aware)
  */
 async function translateSegment(
   segment: string,
   sourceLang: SupportedLanguage,
-  targetLang: SupportedLanguage
-): Promise<{ text: string; provider: string; method: 'neural' | 'dataset' | 'phrase_bank'; transliteration?: string } | null> {
+  targetLang: SupportedLanguage,
+  domain?: string
+): Promise<ProviderTranslationResult | null> {
   const trimmed = segment.trim();
   if (!trimmed) return null;
 
-  const srcCode3 = getLanguageCode3(sourceLang);
-  const tgtCode3 = getLanguageCode3(targetLang);
-  const lower = trimmed.toLowerCase().replace(/[?!.,;]/g, '').trim();
+  // 1. Bilingual Phrase Bank
+  const pbRes = await phraseBankProvider.translate(trimmed, sourceLang, targetLang, { domain });
+  if (pbRes) return pbRes;
 
-  // Tier 1: Bilingual Phrase Bank (Exact phrase match)
-  if (TRANSLATION_MAP[lower] && TRANSLATION_MAP[lower][tgtCode3]) {
-    return {
-      text: TRANSLATION_MAP[lower][tgtCode3],
-      provider: 'Bilingual Phrase Bank',
-      method: 'phrase_bank'
-    };
+  // 2. Classroom SQLite Database Query (translations.db - 6,780 verified rows)
+  const dbRes = await localDbProvider.translate(trimmed, sourceLang, targetLang, { domain });
+  if (dbRes) return dbRes;
+
+  // 3. Santali Linguistic Dataset (In-Memory 6,780 entries with O(1) hash maps)
+  if (santaliDatasetProvider.isAvailable(sourceLang, targetLang)) {
+    const dsRes = await santaliDatasetProvider.translate(trimmed, sourceLang, targetLang, { domain });
+    if (dsRes) return dsRes;
   }
 
-  // Tier 2: Classroom SQLite Database Query (translations.db - 6,780 verified rows)
-  // NOTE: Ho and Mundari columns are now empty strings (never Santali clones).
-  // Query will return null for those pairs rather than misattributed Santali text.
-  try {
-    const dbMatch = await queryTranslationFromDb(trimmed, srcCode3, tgtCode3);
-    if (dbMatch && dbMatch.targetText && dbMatch.targetText.trim() && dbMatch.targetText.toLowerCase() !== trimmed.toLowerCase()) {
-      return {
-        text: dbMatch.targetText,
-        provider: 'Classroom SQLite Dataset (translations.db)',
-        method: 'dataset',
-        transliteration: dbMatch.roman
-      };
-    }
-  } catch (sqlErr) {
-    console.warn('[Translation] SQLite query error:', sqlErr);
+  // 4. On-Device Edge Neural Engine (future-ready interface)
+  if (onDeviceModelProvider.isAvailable(sourceLang, targetLang)) {
+    const modelRes = await onDeviceModelProvider.translate(trimmed, sourceLang, targetLang, { domain });
+    if (modelRes) return modelRes;
   }
 
-  // Tier 3: Santali Linguistic Dataset lookup (Santali-specific; not used for Mundari/Ho)
-  const isTribalSrc = (srcCode3 === 'sat');
-  const isTribalTgt = (tgtCode3 === 'sat');
-  if (isTribalSrc || isTribalTgt || sourceLang === 'english' || sourceLang === 'hindi') {
-    const lookupLang = (srcCode3 === 'hin' ? 'hin' : srcCode3 === 'sat' ? 'sat' : 'eng') as 'eng' | 'hin' | 'sat';
-    const matchResult = findSantaliMatch(trimmed, lookupLang);
-    if (matchResult && matchResult.match) {
-      const santaliMatch = matchResult.match;
-      let resultText = '';
-      if (tgtCode3 === 'sat') {
-        resultText = santaliMatch.roman ? `${santaliMatch.sat} (${santaliMatch.roman})` : santaliMatch.sat;
-      } else if (tgtCode3 === 'hin') {
-        resultText = santaliMatch.hi;
-      } else if (tgtCode3 === 'eng') {
-        resultText = santaliMatch.en;
-      }
-      // Do NOT use Santali dataset results for Mundari or Ho targets
-
-      if (resultText && resultText.toLowerCase() !== trimmed.toLowerCase()) {
-        return {
-          text: resultText,
-          provider: 'Santali Linguistic Dataset',
-          method: 'dataset',
-          transliteration: santaliMatch.roman
-        };
-      }
-    }
-  }
-
-  // Tier 4: Online Neural Translation Bridge (registry-gated, only for verified pairs)
-  const onlineResult = await fetchOnlineTranslation(trimmed, sourceLang, targetLang);
-  if (onlineResult && onlineResult.text && onlineResult.text.toLowerCase() !== trimmed.toLowerCase()) {
-    return {
-      text: onlineResult.text,
-      provider: onlineResult.provider,
-      method: 'neural'
-    };
+  // 5. Online Neural Translation Bridge (capability-gated, offline-aware)
+  if (onlineProvider.isAvailable(sourceLang, targetLang)) {
+    const onlineRes = await onlineProvider.translate(trimmed, sourceLang, targetLang);
+    if (onlineRes) return onlineRes;
   }
 
   // No translation available through any tier
@@ -873,6 +938,7 @@ async function translateSegment(
  * - Consults the TRANSLATION_CAPABILITIES registry to determine support level per pair.
  * - Never silently returns source text as a translation.
  * - For unsupported pairs (Mundari, Ho), returns success=false + vocabularyAssistance[].
+ * - Attaches full TranslationEvidence provenance to every output.
  * - Detects actual Unicode script in Santali output (Ol Chiki vs Romanized).
  * - Provider labels are honest: "Google Translate Web Bridge (Unofficial)" not "Neural API".
  * - reliability field reflects actual capability, never a fake percentage.
@@ -880,13 +946,15 @@ async function translateSegment(
 export async function translateText(
   text: string,
   sourceLangCode: string,
-  targetLangCode: string
+  targetLangCode: string,
+  options?: { domain?: string; targetScript?: string }
 ): Promise<TranslationResult> {
   const trimmed = (text || '').trim();
   const sourceLanguage = normalizeToSupportedLanguage(sourceLangCode);
   const targetLanguage = normalizeToSupportedLanguage(targetLangCode);
   const sourceLangCode3 = getLanguageCode3(sourceLanguage);
   const targetLangCode3 = getLanguageCode3(targetLanguage);
+  const domain = options?.domain;
 
   // Helper to build a clean empty result
   const emptyResult = (success: boolean, rel: TranslationStatus, err?: string): TranslationResult => ({
@@ -902,7 +970,8 @@ export async function translateText(
     error: err,
     reliability: rel,
     provider: 'None',
-    method: 'none'
+    method: 'none',
+    domain
   });
 
   // 1. Empty Check
@@ -919,12 +988,26 @@ export async function translateText(
       success: true,
       reliability: 'verified',
       provider: 'None',
-      method: 'none'
+      method: 'none',
+      domain
     };
   }
 
   // 2. Identity Check (same-language)
   if (sourceLanguage === targetLanguage) {
+    const idEvidence: TranslationEvidence = {
+      id: `ev-id-${Date.now()}`,
+      sourceType: 'phrase_bank',
+      providerName: 'Identity (Same Language)',
+      verificationStatus: 'verified',
+      isOffline: true,
+      internetRequired: false,
+      matchCategory: 'identity',
+      targetScript: CENTRAL_LANGUAGES[targetLanguage]?.scriptName || 'Default',
+      timestamp: Date.now(),
+      notes: 'No translation required (source and target languages are identical).'
+    };
+
     return {
       text: 'No translation required.',
       targetText: 'No translation required.',
@@ -937,7 +1020,9 @@ export async function translateText(
       success: true,
       reliability: 'verified',
       provider: 'Identity (Same Language)',
-      method: 'none'
+      method: 'none',
+      evidence: idEvidence,
+      domain
     };
   }
 
@@ -945,7 +1030,7 @@ export async function translateText(
   const cap = getCapability(sourceLanguage, targetLanguage);
 
   // 4. Cache Check
-  const cacheKey = `${sourceLanguage}_${targetLanguage}_${trimmed}`;
+  const cacheKey = `${sourceLanguage}_${targetLanguage}_${trimmed}_${domain || ''}_${options?.targetScript || ''}`;
   if (translationCache.has(cacheKey)) {
     const cached = translationCache.get(cacheKey)!;
     if (import.meta.env.DEV) {
@@ -970,8 +1055,22 @@ export async function translateText(
       vocabAssist = lookupVocabularyAssistance(words, vocabTargetLang, vocabScriptTarget);
     }
 
+    const vocabEvidence: TranslationEvidence = {
+      id: `ev-unsupp-${Date.now()}`,
+      sourceType: 'vocabulary_bank',
+      providerName: 'Vocabulary Glossary Assistance',
+      verificationStatus: 'vocabulary_only',
+      isOffline: true,
+      internetRequired: false,
+      matchCategory: 'vocabulary_lookup',
+      targetScript: CENTRAL_LANGUAGES[targetLanguage]?.scriptName || 'Default',
+      timestamp: Date.now(),
+      notes: 'Full sentence translation is not available yet. Word-level assistance provided.'
+    };
+
     const result = emptyResult(false, cap?.status || 'unavailable', errorMsg);
     result.vocabularyAssistance = vocabAssist?.length ? vocabAssist : undefined;
+    result.evidence = vocabEvidence;
     return result;
   }
 
@@ -980,15 +1079,17 @@ export async function translateText(
   let finalProvider = 'None';
   let finalMethod: 'neural' | 'dataset' | 'phrase_bank' | 'vocabulary_assistance' | 'none' = 'none';
   let finalTransliteration: string | undefined;
+  let finalEvidence: TranslationEvidence | undefined;
   let isSuccess = false;
 
   // Step A: Translate complete block (preserves document context)
-  const unifiedResult = await translateSegment(trimmed, sourceLanguage, targetLanguage);
+  const unifiedResult = await translateSegment(trimmed, sourceLanguage, targetLanguage, domain);
   if (unifiedResult && unifiedResult.text && unifiedResult.text.toLowerCase() !== trimmed.toLowerCase()) {
     finalOutput = unifiedResult.text.trim();
     finalProvider = unifiedResult.provider;
     finalMethod = unifiedResult.method;
     finalTransliteration = unifiedResult.transliteration;
+    finalEvidence = unifiedResult.evidence;
     isSuccess = true;
   } else {
     // Step B: If unified translation failed (e.g. multi-line document), split by lines
@@ -996,7 +1097,7 @@ export async function translateText(
 
     if (lines.length > 1) {
       const lineResults = await Promise.all(
-        lines.map(line => translateSegment(line, sourceLanguage, targetLanguage))
+        lines.map(line => translateSegment(line, sourceLanguage, targetLanguage, domain))
       );
 
       const successfulLines: string[] = [];
@@ -1009,6 +1110,7 @@ export async function translateText(
           successfulLines.push(res.text.trim());
           providerList.push(res.provider);
           if (!finalMethod || finalMethod === 'none') finalMethod = res.method;
+          if (!finalEvidence && res.evidence) finalEvidence = res.evidence;
           successCount++;
         } else {
           successfulLines.push('');
@@ -1026,17 +1128,20 @@ export async function translateText(
   let result: TranslationResult;
 
   if (isSuccess && finalOutput) {
-    // C3: Detect actual output script — never assume Ol Chiki
+    // Script adaptation if requested
+    if (targetLanguage === 'santali' && options?.targetScript) {
+      finalOutput = transliterateSantaliToScript(finalOutput, options.targetScript as any);
+    }
+
+    // Detect actual output script after script adaptation
     const scriptInfo = detectOutputScript(finalOutput);
 
-    // C4: Determine reliability from the actual provider used (not a fake percentage)
+    // C4: Determine reliability from the actual provider used (never fake verified for online)
     let reliability: TranslationStatus;
     if (finalMethod === 'neural') {
-      reliability = 'verified';
-    } else if (finalMethod === 'dataset') {
+      reliability = 'experimental'; // Online neural bridge is experimental, NEVER verified dataset
+    } else if (finalMethod === 'dataset' || finalMethod === 'phrase_bank') {
       reliability = 'dataset';
-    } else if (finalMethod === 'phrase_bank') {
-      reliability = cap.status === 'verified' ? 'verified' : 'dataset';
     } else {
       reliability = 'experimental';
     }
@@ -1055,12 +1160,49 @@ export async function translateText(
       reliability,
       provider: finalProvider,
       method: finalMethod,
-      outputScript: scriptInfo.scriptName
+      outputScript: scriptInfo.scriptName,
+      evidence: finalEvidence,
+      domain
     };
     translationCache.set(cacheKey, result);
   } else {
     const targetName = CENTRAL_LANGUAGES[targetLanguage]?.name || targetLanguage;
-    result = emptyResult(false, 'unavailable', `${targetName} translation is currently unavailable for this text.`);
+    const errorMsg = `No verified offline sentence translation available for this text.`;
+    result = emptyResult(false, 'unavailable', errorMsg);
+
+    // Word-level vocabulary assistance fallback
+    const words = trimmed.split(/\s+/).map(w => w.replace(/[?!.,;:()"']/g, '').trim()).filter(Boolean);
+    const vocabScriptTarget = (sourceLanguage === 'hindi') ? 'hindi' : 'english';
+    let vocabAssist: { word: string; meaning: string }[] | undefined;
+
+    if (targetLanguage === 'mundari' || targetLanguage === 'ho') {
+      vocabAssist = lookupVocabularyAssistance(words, targetLanguage, vocabScriptTarget);
+    } else if (targetLanguage === 'santali') {
+      const satVocab: { word: string; meaning: string }[] = [];
+      for (const w of words) {
+        const item = lookupWord(w, sourceLanguage === 'hindi' ? 'hin' : 'eng');
+        if (item) {
+          satVocab.push({ word: w, meaning: item.sat });
+        }
+      }
+      if (satVocab.length > 0) vocabAssist = satVocab;
+    }
+
+    if (vocabAssist && vocabAssist.length > 0) {
+      result.vocabularyAssistance = vocabAssist;
+      result.evidence = {
+        id: `ev-vocab-${Date.now()}`,
+        sourceType: 'vocabulary_bank',
+        providerName: 'Local Vocabulary Assistance',
+        verificationStatus: 'vocabulary_only',
+        isOffline: true,
+        internetRequired: false,
+        matchCategory: 'vocabulary_lookup',
+        targetScript: CENTRAL_LANGUAGES[targetLanguage]?.scriptName || 'Default',
+        timestamp: Date.now(),
+        notes: 'Sentence-level translation unavailable. Word-level vocabulary assistance provided.'
+      };
+    }
   }
 
   // Development debug log
@@ -1142,11 +1284,60 @@ function transliterateDevanagariToRoman(text: string): string {
   return result;
 }
 
+export interface SpeechPlaybackInfo {
+  engineType: 'native' | 'phonetic_indian' | 'browser_default' | 'audio_chime';
+  label: string;
+  isNative: boolean;
+  notes: string;
+  voiceName?: string;
+}
+
+/**
+ * Returns honest linguistic and engine capabilities for speech playback.
+ * Enforces zero-fabrication: Never misleads user that phonetic Indian TTS is a native tribal model.
+ */
+export function getSpeechEngineInfo(langCode: string): SpeechPlaybackInfo {
+  const norm = normalizeToSupportedLanguage(langCode);
+  if (norm === 'santali' || norm === 'mundari' || norm === 'ho') {
+    return {
+      engineType: 'phonetic_indian',
+      label: 'Phonetic Pronunciation',
+      isNative: false,
+      notes: 'Native tribal voice model unavailable in browser speech engines — playing verified phonetic pronunciation via Indian English/Hindi voice.'
+    };
+  }
+  if (norm === 'hindi') {
+    return {
+      engineType: 'native',
+      label: 'Native Hindi Voice',
+      isNative: true,
+      notes: 'Synthesized using native Hindi speech synthesis.'
+    };
+  }
+  return {
+    engineType: 'native',
+    label: 'Native English Voice',
+    isNative: true,
+    notes: 'Synthesized using native English speech synthesis.'
+  };
+}
+
 /**
  * Text to Speech Synthesizer with verified Santali Roman pronunciations and multi-engine voice support.
  * Optimized for Mobile (iOS Safari & Android Chrome) + Desktop with universal phonetic fallback.
+ * Uses O(1) hash map lookup for instant dataset pronunciation extraction.
+ * 
+ * Enforces TTS Honesty:
+ * - When native tribal voice is absent, reports phonetic pronunciation via Indian voice.
+ * - Infallible audio confirmation chime is NEVER falsely labeled as TTS.
  */
-export function playTextSpeech(text: string, langCode: string, customRate: number = 0.9, onEnd?: () => void) {
+export function playTextSpeech(
+  text: string,
+  langCode: string,
+  customRate: number = 0.9,
+  onEnd?: () => void,
+  onStatusChange?: (info: SpeechPlaybackInfo) => void
+) {
   if (!text || !text.trim()) {
     onEnd?.();
     return;
@@ -1170,13 +1361,8 @@ export function playTextSpeech(text: string, langCode: string, customRate: numbe
     if (KNOWN_ROMAN_PHRASES[cleanSat]) {
       textToSpeak = KNOWN_ROMAN_PHRASES[cleanSat];
     } else {
-      // Check direct match in 6,780+ dataset for official pronunciation
-      const datasetMatch = SANTALI_DATASET.find(d => 
-        d.sat.trim() === rawText ||
-        d.sat.replace(/[᱾᱿•]/g, '').trim() === cleanSat ||
-        d.en.toLowerCase() === rawText.toLowerCase() ||
-        d.hi === rawText
-      );
+      // O(1) instantaneous dataset hash map lookup
+      const datasetMatch = lookupExactDatasetEntry(cleanSat) || lookupExactDatasetEntry(rawText);
 
       if (datasetMatch && datasetMatch.roman) {
         textToSpeak = datasetMatch.roman;
@@ -1202,7 +1388,13 @@ export function playTextSpeech(text: string, langCode: string, customRate: numbe
 
   // Check Web Speech API support
   if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
-    console.warn('Web Speech Synthesis not supported; playing acoustic tone fallback');
+    console.warn('Web Speech Synthesis not supported on this device; playing acoustic confirmation chime fallback');
+    onStatusChange?.({
+      engineType: 'audio_chime',
+      label: 'Acoustic Chime (No Speech Engine)',
+      isNative: false,
+      notes: 'Browser speech synthesis unavailable; played acoustic confirmation tone.'
+    });
     playChimeTone();
     onEnd?.();
     return;
@@ -1260,6 +1452,13 @@ export function playTextSpeech(text: string, langCode: string, customRate: numbe
     if (selectedVoice) {
       utterance.voice = selectedVoice;
     }
+
+    // Report honest engine status to caller
+    const engineInfo = getSpeechEngineInfo(langCode);
+    if (selectedVoice) {
+      engineInfo.voiceName = selectedVoice.name;
+    }
+    onStatusChange?.(engineInfo);
 
     const cleanup = () => {
       const arr = (window as any).__activeUtterances;
@@ -1354,8 +1553,6 @@ export interface OCRResult {
   unsupportedMessage?: string;
 }
 
-import { extractTextFromImage } from './ocrService';
-
 export async function processImageOCR(
   imageSrc: string,
   targetLangCode: string,
@@ -1363,6 +1560,7 @@ export async function processImageOCR(
   enableDebug: boolean = true,
   groundTruthText?: string
 ): Promise<OCRResult> {
+  const { extractTextFromImage } = await import('./ocrService');
   const realRes = await extractTextFromImage(imageSrc, targetLangCode, onProgress, enableDebug, groundTruthText);
 
   return {
@@ -1384,3 +1582,4 @@ export async function processImageOCR(
     unsupportedMessage: realRes.unsupportedMessage
   };
 }
+

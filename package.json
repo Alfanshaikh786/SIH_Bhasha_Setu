@@ -7,6 +7,15 @@
     "dev": "vite",
     "build": "vite build",
     "build:db": "node scripts/generateSqliteDb.cjs",
+    "validate:dataset": "node scripts/validate_santali_dataset.cjs",
+    "classify:duplicates": "node scripts/classify_dataset_duplicates.cjs",
+    "evaluate:santali": "node scripts/evaluate_santali_translation.cjs",
+    "test:hallucination": "node scripts/test_hallucination_and_fuzzy.cjs",
+    "audit:evidence": "node scripts/audit_translation_evidence.cjs",
+    "check:regression": "node scripts/check_bundle_regression.cjs",
+    "validate:device": "node scripts/real_device_validation.cjs",
+    "benchmark": "node scripts/benchmark_perf.cjs",
+    "test": "node scripts/test_translation_pipeline.cjs",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -62287,16 +62287,35 @@ export function lookupWord(input: string, sourceLang: string): VocabularyWord | 
 }
 
 /**
- * Intelligent semantic fuzzy matcher for sentences and phrases
+ * Fast O(1) exact lookup across any language or script representation
+ */
+export function lookupExactDatasetEntry(query: string): SantaliDatasetEntry | null {
+  if (!query) return null;
+  const clean = normalizeText(query);
+  const rawTrimmed = query.trim();
+  const cleanPunct = rawTrimmed.replace(/[᱾᱿•()]/g, '').trim();
+
+  return SAT_MAP.get(rawTrimmed) ||
+         SAT_MAP.get(cleanPunct) ||
+         EN_MAP.get(clean) ||
+         HI_MAP.get(clean) ||
+         ROMAN_MAP.get(clean) ||
+         null;
+}
+
+/**
+ * Intelligent semantic fuzzy matcher for sentences and phrases with domain context weighting
  */
 export function findSantaliMatch(
   query: string, 
-  sourceLang: 'eng' | 'hin' | 'sat'
-): { match: SantaliDatasetEntry; confidence: number } | null {
+  sourceLang: 'eng' | 'hin' | 'sat',
+  options?: { domain?: string }
+): { match: SantaliDatasetEntry; confidence: number; alternateCandidates?: SantaliDatasetEntry[] } | null {
   if (!query || !query.trim()) return null;
 
   const cleanQuery = normalizeText(query);
   const queryTokens = getSignificantTokens(query);
+  const preferredDomain = options?.domain && options.domain !== 'All' ? options.domain.toLowerCase() : undefined;
 
   // 1. Exact Match
   if (sourceLang === 'eng') {
@@ -62310,11 +62329,12 @@ export function findSantaliMatch(
     if (exactSat) return { match: exactSat, confidence: 1.0 };
   }
 
-  // 2. Token Jaccard Similarity Fuzzy Match
+  // 2. Token Jaccard Similarity Fuzzy Match with Collision Guard
   if (queryTokens.length === 0) return null;
 
   let bestEntry: SantaliDatasetEntry | null = null;
   let bestScore = 0;
+  const candidates: { entry: SantaliDatasetEntry; score: number }[] = [];
 
   for (const item of SANTALI_DATASET) {
     const targetText = sourceLang === 'eng' ? item.en : sourceLang === 'hin' ? item.hi : item.sat;
@@ -62333,24 +62353,48 @@ export function findSantaliMatch(
     const union = new Set([...queryTokens, ...targetTokens]).size;
     const jaccard = union > 0 ? intersection / union : 0;
 
-    // Substring bonus
+    // Strict Length Ratio Guard: prevents 3-word query matching 13-word sentence
+    const tokenRatio = Math.min(queryTokens.length, targetTokens.length) / Math.max(queryTokens.length, targetTokens.length);
+    if (tokenRatio < 0.75) continue;
+
     const normTarget = normalizeText(targetText);
-    let score = jaccard;
-    if (normTarget.includes(cleanQuery) || cleanQuery.includes(normTarget)) {
-      score = Math.max(score, 0.75 + (jaccard * 0.25));
+    let score = jaccard * tokenRatio;
+
+    // Substring bonus ONLY if lengths are very close (e.g. slight punctuation/stopword difference)
+    if ((normTarget.includes(cleanQuery) || cleanQuery.includes(normTarget)) && tokenRatio >= 0.85) {
+      score = Math.max(score, 0.85 + (jaccard * 0.15));
+    }
+
+    // Contextual Domain Weighting (e.g. Animal, Healthcare, Education)
+    if (preferredDomain && item.cat && item.cat.toLowerCase().includes(preferredDomain)) {
+      score += 0.05;
+    }
+
+    if (score >= 0.80) {
+      candidates.push({ entry: item, score });
     }
 
     if (score > bestScore) {
       bestScore = score;
       bestEntry = item;
-      if (bestScore >= 0.95) break; // Early exit on near-exact
+      if (bestScore >= 0.98) break; // Early exit on near-exact
     }
   }
 
-  // Require high confidence: single-word queries need ≥ 0.90, multi-word ≥ 0.65
-  const minThreshold = queryTokens.length <= 1 ? 0.90 : 0.65;
+  // Require high confidence: single-word queries need ≥ 0.90, multi-word ≥ 0.85
+  const minThreshold = queryTokens.length <= 1 ? 0.90 : 0.85;
   if (bestEntry && bestScore >= minThreshold) {
-    return { match: bestEntry, confidence: Math.min(bestScore, 0.98) };
+    // Collect close alternates (within 0.05 of top score) for ambiguity safety
+    const alternates = candidates
+      .filter(c => c.entry.id !== bestEntry!.id && Math.abs(c.score - bestScore) <= 0.06)
+      .map(c => c.entry)
+      .slice(0, 3);
+
+    return { 
+      match: bestEntry, 
+      confidence: Math.min(bestScore, 0.98),
+      alternateCandidates: alternates.length > 0 ? alternates : undefined
+    };
   }
 
   return null;

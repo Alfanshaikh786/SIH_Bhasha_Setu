@@ -1,17 +1,63 @@
 /**
- * Central Language Definitions & Normalization for Bhasha Setu
+ * Central Language & Script Architecture for Bhasha Setu
  *
- * Supported Languages:
- * - English
- * - Hindi
- * - Santali
- * - Mundari
- * - Ho
- *
- * Note: Latin, Devanagari, Ol Chiki, Warang Chiti are SCRIPTS, not languages.
+ * Explicitly separates LANGUAGE (linguistic system) from SCRIPT (orthographic system).
+ * One language can support multiple scripts:
+ *  - Santali: Ol Chiki (primary native), Roman/Latin (phonetic), Devanagari (phonetic)
+ *  - Mundari: Devanagari (primary), Roman/Latin, Mundari Bani (future)
+ *  - Ho: Warang Chiti (primary native), Devanagari, Roman/Latin
+ *  - Hindi: Devanagari (primary), Roman/Latin (phonetic)
+ *  - English: Latin (primary)
  */
 
 export type SupportedLanguage = 'english' | 'hindi' | 'santali' | 'mundari' | 'ho';
+
+export type ScriptId = 'ol_chiki' | 'devanagari' | 'latin' | 'warang_chiti' | 'mundari_bani';
+
+export interface ScriptInfo {
+  id: ScriptId;
+  name: string;
+  nativeName: string;
+  unicodeRange?: string;
+  isPhoneticRepresentation?: boolean;
+}
+
+export const SUPPORTED_SCRIPTS: Record<ScriptId, ScriptInfo> = {
+  ol_chiki: {
+    id: 'ol_chiki',
+    name: 'Ol Chiki',
+    nativeName: 'ᱚᱞ ᱪᱤᱠᱤ',
+    unicodeRange: 'U+1C50–U+1C7F',
+    isPhoneticRepresentation: false
+  },
+  devanagari: {
+    id: 'devanagari',
+    name: 'Devanagari',
+    nativeName: 'देवनागरी',
+    unicodeRange: 'U+0900–U+097F',
+    isPhoneticRepresentation: false
+  },
+  latin: {
+    id: 'latin',
+    name: 'Roman / Latin',
+    nativeName: 'Latin',
+    unicodeRange: 'U+0020–U+007E',
+    isPhoneticRepresentation: true
+  },
+  warang_chiti: {
+    id: 'warang_chiti',
+    name: 'Warang Chiti',
+    nativeName: '𑢹𑣉𑣉',
+    unicodeRange: 'U+118A0–U+118FF',
+    isPhoneticRepresentation: false
+  },
+  mundari_bani: {
+    id: 'mundari_bani',
+    name: 'Mundari Bani',
+    nativeName: 'ᱢᱩᱱᱰᱟᱨᱤ ᱵᱟᱹᱱᱤ',
+    isPhoneticRepresentation: false
+  }
+};
 
 export interface LanguageInfo {
   id: SupportedLanguage;
@@ -23,29 +69,17 @@ export interface LanguageInfo {
   badge: string;
   isTribal: boolean;
   scriptName: string;
+  primaryScript: ScriptId;
+  supportedScripts: ScriptId[];
+  linguisticFamily: 'Austroasiatic (Munda)' | 'Indo-Aryan' | 'Germanic';
 }
 
 export const LANGUAGES = {
-  english: {
-    name: "English",
-    code: "en"
-  },
-  hindi: {
-    name: "Hindi",
-    code: "hi"
-  },
-  santali: {
-    name: "Santali",
-    code: "sat"
-  },
-  mundari: {
-    name: "Mundari",
-    code: "unr"
-  },
-  ho: {
-    name: "Ho",
-    code: "hoc"
-  }
+  english: { name: "English", code: "en" },
+  hindi: { name: "Hindi", code: "hi" },
+  santali: { name: "Santali", code: "sat" },
+  mundari: { name: "Mundari", code: "unr" },
+  ho: { name: "Ho", code: "hoc" }
 };
 
 export function getLanguageCode(language: SupportedLanguage): string {
@@ -62,7 +96,10 @@ export const CENTRAL_LANGUAGES: Record<SupportedLanguage, LanguageInfo> = {
     flag: '🇬🇧',
     badge: 'EN',
     isTribal: false,
-    scriptName: 'Latin'
+    scriptName: 'Latin',
+    primaryScript: 'latin',
+    supportedScripts: ['latin'],
+    linguisticFamily: 'Germanic'
   },
   hindi: {
     id: 'hindi',
@@ -73,7 +110,10 @@ export const CENTRAL_LANGUAGES: Record<SupportedLanguage, LanguageInfo> = {
     flag: '🇮🇳',
     badge: 'HI',
     isTribal: false,
-    scriptName: 'Devanagari'
+    scriptName: 'Devanagari',
+    primaryScript: 'devanagari',
+    supportedScripts: ['devanagari', 'latin'],
+    linguisticFamily: 'Indo-Aryan'
   },
   santali: {
     id: 'santali',
@@ -84,7 +124,10 @@ export const CENTRAL_LANGUAGES: Record<SupportedLanguage, LanguageInfo> = {
     flag: '🌿',
     badge: 'ᱥᱟ',
     isTribal: true,
-    scriptName: 'Ol Chiki'
+    scriptName: 'Ol Chiki',
+    primaryScript: 'ol_chiki',
+    supportedScripts: ['ol_chiki', 'latin', 'devanagari'],
+    linguisticFamily: 'Austroasiatic (Munda)'
   },
   mundari: {
     id: 'mundari',
@@ -95,7 +138,10 @@ export const CENTRAL_LANGUAGES: Record<SupportedLanguage, LanguageInfo> = {
     flag: '🌿',
     badge: 'मु',
     isTribal: true,
-    scriptName: 'Mundari Bani / Devanagari'
+    scriptName: 'Mundari Bani / Devanagari',
+    primaryScript: 'devanagari',
+    supportedScripts: ['devanagari', 'latin', 'mundari_bani'],
+    linguisticFamily: 'Austroasiatic (Munda)'
   },
   ho: {
     id: 'ho',
@@ -106,7 +152,10 @@ export const CENTRAL_LANGUAGES: Record<SupportedLanguage, LanguageInfo> = {
     flag: '🌿',
     badge: 'हो',
     isTribal: true,
-    scriptName: 'Warang Chiti / Devanagari'
+    scriptName: 'Warang Chiti / Devanagari',
+    primaryScript: 'warang_chiti',
+    supportedScripts: ['warang_chiti', 'devanagari', 'latin'],
+    linguisticFamily: 'Austroasiatic (Munda)'
   }
 };
 
