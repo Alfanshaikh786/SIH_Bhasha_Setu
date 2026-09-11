@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Radio, 
   Mic, 
-  Square,
+  Square, 
   Volume2, 
   Sparkles, 
   ArrowLeftRight, 
@@ -23,9 +23,10 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { SUPPORTED_LANGUAGES } from '../../data/languages';
-import { translateText, playTextSpeech } from '../../services/translationService';
-import { MicrophoneStreamer, ASRSegment } from '../../services/asrService';
+import { playTextSpeech } from '../../services/translationService';
 import { saveHumanCorrection } from '../../services/humanCorrectionService';
+import { S2STurnController } from '../../services/s2s/turnController';
+import { S2STurnRecord, ConfidenceTier, SpeakerRole } from '../../services/s2s/s2sTypes';
 
 interface ChatMessage {
   id: string;
@@ -38,7 +39,7 @@ interface ChatMessage {
   translatedText: string;
   pronunciation?: string;
   time: string;
-  confidenceTier: 'verified' | 'dataset' | 'fallback' | 'needs_review';
+  confidenceTier: ConfidenceTier;
   needsReview: boolean;
 }
 
@@ -81,7 +82,6 @@ export const SpeechToSpeechPage: React.FC = () => {
   const [langB, setLangB] = useState('sat'); // Person B: Santali default (Student/Citizen)
   const [activeSpeaker, setActiveSpeaker] = useState<'speakerA' | 'speakerB' | null>(null);
   const [liveTranscript, setLiveTranscript] = useState('');
-  const [manualInput, setManualInput] = useState('');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [guardrailNotice, setGuardrailNotice] = useState<string | null>(null);
   const [autoSpeak, setAutoSpeak] = useState(true);
@@ -125,48 +125,97 @@ export const SpeechToSpeechPage: React.FC = () => {
     }
   ]);
 
-  const recognitionRef = useRef<any>(null);
-  const streamerRef = useRef<MicrophoneStreamer | null>(null);
+  const controllerRef = useRef<S2STurnController | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
-  const spokenTextRef = useRef<string>('');
 
-  const langAObj = SUPPORTED_LANGUAGES.find(l => l.code === langA) || SUPPORTED_LANGUAGES[1]; // Hindi
-  const langBObj = SUPPORTED_LANGUAGES.find(l => l.code === langB) || SUPPORTED_LANGUAGES[0]; // Santali
+  const langAObj = useMemo(() => 
+    SUPPORTED_LANGUAGES.find(l => l.code === langA) || SUPPORTED_LANGUAGES[1], 
+    [langA]
+  );
+  const langBObj = useMemo(() => 
+    SUPPORTED_LANGUAGES.find(l => l.code === langB) || SUPPORTED_LANGUAGES[0], 
+    [langB]
+  );
+
+  // Initialize S2S Turn Controller
+  useEffect(() => {
+    const controller = new S2STurnController({
+      onInterimText: (interim, speaker) => {
+        setActiveSpeaker(speaker);
+        setLiveTranscript(interim);
+      },
+      onTurnComplete: (record: S2STurnRecord) => {
+        const newMsg: ChatMessage = {
+          id: record.metadata.turnId,
+          sender: record.metadata.speakerId,
+          senderRole: record.metadata.speakerRole,
+          sourceLang: record.metadata.sourceLang,
+          targetLang: record.metadata.targetLang,
+          langName: record.metadata.sourceLangName,
+          originalText: record.asr.transcript,
+          translatedText: record.translation.targetText,
+          pronunciation: record.translation.transliteration,
+          time: record.metadata.timeFormatted,
+          confidenceTier: record.reliability.finalTier,
+          needsReview: record.reliability.needsReview
+        };
+
+        setMessages(prev => [...prev, newMsg]);
+        setActiveSpeaker(null);
+        setLiveTranscript('');
+        setStatusMessage(null);
+      },
+      onStatusMessage: (msg) => {
+        setStatusMessage(msg);
+      },
+      onGuardrailNotice: (notice) => {
+        setGuardrailNotice(notice);
+      },
+      onSpeakingTurnIdChange: (msgId) => {
+        setSpeakingMessageId(msgId);
+      },
+      onError: (err) => {
+        console.warn('[S2S Controller notice]:', err.message);
+        setActiveSpeaker(null);
+        setLiveTranscript('');
+      }
+    });
+
+    controller.setAutoSpeak(autoSpeak);
+    controller.setVoiceSpeed(voiceSpeed);
+    controllerRef.current = controller;
+
+    return () => {
+      controller.stopTurn();
+      controllerRef.current = null;
+    };
+  }, []);
+
+  // Update controller settings when autoSpeak / voiceSpeed changes
+  useEffect(() => {
+    if (controllerRef.current) {
+      controllerRef.current.setAutoSpeak(autoSpeak);
+      controllerRef.current.setVoiceSpeed(voiceSpeed);
+    }
+  }, [autoSpeak, voiceSpeed]);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, liveTranscript]);
 
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      if (recognitionRef.current) {
-        try { recognitionRef.current.abort(); } catch {}
-      }
-      if (streamerRef.current) {
-        streamerRef.current.stop();
-      }
-    };
-  }, []);
-
   const handleSwapSpeakers = () => {
+    controllerRef.current?.stopTurn();
+    setActiveSpeaker(null);
+    setLiveTranscript('');
     const tempA = langA;
     setLangA(langB);
     setLangB(tempA);
     setGuardrailNotice(null);
   };
 
-  const processAndAddMessage = async (
-    speaker: 'speakerA' | 'speakerB',
-    spokenText: string,
-    asrConfidence?: number | null
-  ) => {
-    const trimmed = spokenText.trim();
-    if (!trimmed) {
-      setActiveSpeaker(null);
-      setLiveTranscript('');
-      return;
-    }
+  const handleStartListening = async (speaker: 'speakerA' | 'speakerB') => {
+    setGuardrailNotice(null);
+    setStatusMessage(null);
 
     const isA = speaker === 'speakerA';
     const sourceCode = isA ? langA : langB;
@@ -174,170 +223,25 @@ export const SpeechToSpeechPage: React.FC = () => {
     const sourceLangName = isA ? langAObj.name : langBObj.name;
     const senderRole = isA ? 'Person A (Teacher/Officer)' : 'Person B (Student/Citizen)';
 
-    setStatusMessage('Translating and generating voice...');
-    const trans = await translateText(trimmed, sourceCode, targetCode);
-
-    let confidenceTier: 'verified' | 'dataset' | 'fallback' | 'needs_review' = 'fallback';
-    if (trans.reliability === 'verified') confidenceTier = 'verified';
-    else if (trans.reliability === 'dataset') confidenceTier = 'dataset';
-    else if (asrConfidence !== null && asrConfidence !== undefined && asrConfidence < 0.70) confidenceTier = 'needs_review';
-
-    const msgId = `conv-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-    const newMsg: ChatMessage = {
-      id: msgId,
-      sender: speaker,
-      senderRole,
-      sourceLang: sourceCode,
-      targetLang: targetCode,
-      langName: sourceLangName,
-      originalText: trimmed,
-      translatedText: trans.targetText,
-      pronunciation: trans.transliteration,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      confidenceTier,
-      needsReview: confidenceTier === 'needs_review' || !trans.success
-    };
-
-    setMessages(prev => [...prev, newMsg]);
-    setActiveSpeaker(null);
-    setLiveTranscript('');
-    setStatusMessage(null);
-
-    // Automatically speak the translated text
-    if (autoSpeak && trans.targetText) {
-      setSpeakingMessageId(msgId);
-      playTextSpeech(trans.targetText, targetCode, voiceSpeed, () => setSpeakingMessageId(null));
-    }
-  };
-
-  const handleStartListening = async (speaker: 'speakerA' | 'speakerB') => {
-    setGuardrailNotice(null);
-    setStatusMessage(null);
-
-    // Turn-lock: Cleanly terminate any running session before initiating new speaker turn
-    if (activeSpeaker || streamerRef.current || recognitionRef.current) {
-      handleStopListening();
-    }
-
-    const isA = speaker === 'speakerA';
-    const sourceCode = isA ? langA : langB;
-    const sourceLangName = isA ? langAObj.name : langBObj.name;
-
-    // --- RESPONSIBLE AI GUARDRAIL: Strict block on Mundari and Ho ---
-    if (sourceCode === 'unr' || sourceCode === 'mundari') {
-      setGuardrailNotice('Mundari ASR is currently under development. This language will be enabled after validated training and testing.');
-      return;
-    }
-    if (sourceCode === 'hoc' || sourceCode === 'ho') {
-      setGuardrailNotice('Ho ASR is currently under development. This language will be enabled after validated training and testing.');
-      return;
-    }
-
     setActiveSpeaker(speaker);
     setLiveTranscript('');
-    spokenTextRef.current = '';
 
-    // --- SANTALI: Route through Neural IndicConformer WebSocket Streamer ---
-    if (sourceCode === 'sat') {
-      setStatusMessage('Listening in Santali (Neural IndicConformer)... Speak clearly.');
-      try {
-        const streamer = new MicrophoneStreamer({
-          onInterim: (text: string) => {
-            setLiveTranscript(text);
-          },
-          onFinal: (seg: ASRSegment) => {
-            if (seg.text) {
-              processAndAddMessage(speaker, seg.text, seg.asr_confidence);
-            }
-          },
-          onError: (err: string) => {
-            console.warn('[Conversation] Santali ASR Stream notice:', err);
-            setStatusMessage('Local Santali ASR offline. Type or select from verified phrases below.');
-            setActiveSpeaker(null);
-          }
-        });
-
-        await streamer.start();
-        streamerRef.current = streamer;
-      } catch (err: any) {
-        setStatusMessage(`Microphone unavailable: ${err?.message || err}`);
-        setActiveSpeaker(null);
-      }
-      return;
-    }
-
-    // --- HINDI / ENGLISH: Native Browser Acoustic Models ---
-    const win = window as unknown as { webkitSpeechRecognition?: any; SpeechRecognition?: any };
-    const SpeechRecognitionClass = win.SpeechRecognition || win.webkitSpeechRecognition;
-
-    if (!SpeechRecognitionClass) {
-      setStatusMessage('Microphone speech recognition is not supported in this browser. Please use Chrome or Edge.');
-      setActiveSpeaker(null);
-      return;
-    }
-
-    setStatusMessage(`Listening to ${sourceLangName}... Speak now.`);
-
-    try {
-      if (recognitionRef.current) {
-        try { recognitionRef.current.abort(); } catch {}
-      }
-
-      const recognition = new SpeechRecognitionClass();
-      recognition.lang = sourceCode === 'eng' ? 'en-IN' : 'hi-IN';
-      recognition.continuous = false; // Single sentence turn
-      recognition.interimResults = true;
-
-      recognition.onresult = (event: any) => {
-        let interim = '';
-        let finalChunk = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const trans = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalChunk += trans;
-          } else {
-            interim += trans;
-          }
-        }
-        if (finalChunk) {
-          spokenTextRef.current = finalChunk.trim();
-        }
-        setLiveTranscript(spokenTextRef.current || interim);
-      };
-
-      recognition.onend = () => {
-        if (spokenTextRef.current) {
-          processAndAddMessage(speaker, spokenTextRef.current);
-        } else {
-          setActiveSpeaker(null);
-          setStatusMessage(null);
-        }
-      };
-
-      recognition.onerror = (e: any) => {
-        console.warn('Speech recognition error:', e);
-        setStatusMessage('Speech recognition stopped.');
-        setActiveSpeaker(null);
-      };
-
-      recognitionRef.current = recognition;
-      recognition.start();
-    } catch (e) {
-      console.warn('Speech recognition init error:', e);
-      setActiveSpeaker(null);
+    if (controllerRef.current) {
+      await controllerRef.current.startTurn(
+        speaker,
+        sourceCode,
+        targetCode,
+        sourceLangName,
+        senderRole
+      );
     }
   };
 
   const handleStopListening = () => {
     setActiveSpeaker(null);
     setStatusMessage(null);
-    if (streamerRef.current) {
-      streamerRef.current.stop();
-      streamerRef.current = null;
-    }
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch {}
-      recognitionRef.current = null;
+    if (controllerRef.current) {
+      controllerRef.current.stopListening();
     }
   };
 
@@ -350,6 +254,7 @@ export const SpeechToSpeechPage: React.FC = () => {
   const handleSaveCorrection = async () => {
     if (!editingMessage) return;
 
+    // Save to human correction store & offline sync queue
     saveHumanCorrection({
       rawText: editingMessage.originalText,
       correctedText: editOriginalText,
@@ -357,8 +262,17 @@ export const SpeechToSpeechPage: React.FC = () => {
       targetLang: editingMessage.targetLang,
       rawTranslation: editingMessage.translatedText,
       correctedTranslation: editTranslatedText,
-      engine: 'Two-Way Conversation'
+      engine: 'Two-Way S2S Conversation',
+      verificationLevel: 'USER_CORRECTED'
     });
+
+    if (controllerRef.current) {
+      controllerRef.current.saveCorrection(
+        editingMessage.id,
+        editOriginalText,
+        editTranslatedText
+      ).catch(() => {});
+    }
 
     // Update message in state
     setMessages(prev => prev.map(m => {
@@ -375,6 +289,19 @@ export const SpeechToSpeechPage: React.FC = () => {
     }));
 
     setEditingMessage(null);
+  };
+
+  const handleProcessPhrase = (phraseText: string) => {
+    if (controllerRef.current) {
+      controllerRef.current.processPhraseDirect(
+        'speakerA',
+        phraseText,
+        langA,
+        langB,
+        langAObj.name,
+        'Person A (Teacher/Officer)'
+      );
+    }
   };
 
   return (
@@ -668,7 +595,7 @@ export const SpeechToSpeechPage: React.FC = () => {
             {GENERAL_DATASET_PHRASES[activeCategory].phrases.map((p, idx) => (
               <button
                 key={idx}
-                onClick={() => processAndAddMessage('speakerA', p.hi || p.en)}
+                onClick={() => handleProcessPhrase(p.hi || p.en)}
                 className="p-2.5 rounded-2xl bg-slate-50 hover:bg-emerald-50 border border-slate-200/70 hover:border-emerald-300 text-left transition text-xs flex items-center justify-between group cursor-pointer"
               >
                 <div className="truncate pr-2">

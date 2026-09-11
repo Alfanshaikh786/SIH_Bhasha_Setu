@@ -1,0 +1,69 @@
+{
+  "version": "1.0.0",
+  "language": "sat",
+  "environment": "quiet_room",
+  "noiseCondition": "clean",
+  "notes": "Evaluation manifests configured for real speaker recording validation. Real audio validation pending physical recording sessions.",
+  "samples": [
+    {
+      "sampleId": "sat_clean_001",
+      "speakerId": "spk_sat_001",
+      "demographicCategory": "adult_female",
+      "audioFile": "sat_clean_001.wav",
+      "durationMs": 1420,
+      "domain": "GENERAL",
+      "referenceTranscript": "ᱡᱚᱦᱟᱨ",
+      "referenceTranslation": "Hello",
+      "evaluationType": "REAL_AUDIO",
+      "validationStatus": "REAL AUDIO VALIDATION PENDING"
+    },
+    {
+      "sampleId": "sat_clean_002",
+      "speakerId": "spk_sat_002",
+      "demographicCategory": "adult_male",
+      "audioFile": "sat_clean_002.wav",
+      "durationMs": 2850,
+      "domain": "HEALTHCARE",
+      "referenceTranscript": "ᱤᱧᱟᱜ ᱨᱩᱣᱟᱹ ᱦᱮᱡ ᱟᱠᱟᱱᱟ",
+      "referenceTranslation": "I have a fever",
+      "evaluationType": "REAL_AUDIO",
+      "validationStatus": "REAL AUDIO VALIDATION PENDING"
+    },
+    {
+      "sampleId": "sat_clean_003",
+      "speakerId": "spk_sat_003",
+      "demographicCategory": "elderly_female",
+      "audioFile": "sat_clean_003.wav",
+      "durationMs": 3100,
+      "domain": "HEALTHCARE",
+      "referenceTranscript": "ᱥᱤᱠᱤᱞ ᱥᱮᱞ ᱨᱩᱣᱟᱹ ᱨᱮᱭᱟᱜ ᱴᱤᱠᱟᱹ",
+      "referenceTranslation": "Vaccine for sickle cell disease",
+      "evaluationType": "REAL_AUDIO",
+      "validationStatus": "REAL AUDIO VALIDATION PENDING"
+    },
+    {
+      "sampleId": "sat_clean_004",
+      "speakerId": "spk_sat_004",
+      "demographicCategory": "child",
+      "audioFile": "sat_clean_004.wav",
+      "durationMs": 2100,
+      "domain": "EDUCATION",
+      "referenceTranscript": "ᱯᱚᱛᱚᱵ ᱡᱷᱤᱡᱽ ᱢᱮ",
+      "referenceTranslation": "Open the book",
+      "evaluationType": "REAL_AUDIO",
+      "validationStatus": "REAL AUDIO VALIDATION PENDING"
+    },
+    {
+      "sampleId": "sat_clean_005",
+      "speakerId": "spk_sat_005",
+      "demographicCategory": "adult_male",
+      "audioFile": "sat_clean_005.wav",
+      "durationMs": 2600,
+      "domain": "AGRICULTURE",
+      "referenceTranscript": "ᱫᱟᱜ ᱡᱟᱹᱲᱤ ᱦᱩᱭᱩᱜ ᱠᱟᱱᱟ",
+      "referenceTranslation": "It is raining",
+      "evaluationType": "REAL_AUDIO",
+      "validationStatus": "REAL AUDIO VALIDATION PENDING"
+    }
+  ]
+}

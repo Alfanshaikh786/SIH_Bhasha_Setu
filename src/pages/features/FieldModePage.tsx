@@ -22,6 +22,8 @@ import { translateText, playTextSpeech } from '../../services/translationService
 import { MicrophoneStreamer, ASRSegment } from '../../services/asrService';
 import { AudioQualityMonitor, AudioQualityStatus } from '../../services/audioQualityService';
 import { saveHumanCorrection } from '../../services/humanCorrectionService';
+import { TranslationDecisionEngine } from '../../services/s2s/translationDecisionEngine';
+import { DomainSafetyEngine } from '../../services/s2s/domainSafetyEngine';
 
 export const FieldModePage: React.FC = () => {
   const [sourceLang, setSourceLang] = useState('sat'); // Default: Santali
@@ -92,20 +94,20 @@ export const FieldModePage: React.FC = () => {
     setSpokenText(trimmed);
     setStatusMessage('Translating on-device...');
 
-    const res = await translateText(trimmed, sourceLang, targetLang);
+    const res = await TranslationDecisionEngine.resolveTranslation(trimmed, sourceLang, targetLang);
     setTranslatedText(res.targetText);
     setPronunciation(res.transliteration || '');
 
-    // Assign 4-tier confidence
-    if (res.reliability === 'verified') {
-      setConfidenceTier('verified');
-    } else if (res.reliability === 'dataset') {
-      setConfidenceTier('dataset');
-    } else if (asrConf !== null && asrConf !== undefined && asrConf < 0.70) {
-      setConfidenceTier('needs_review');
-    } else {
-      setConfidenceTier('fallback');
-    }
+    // Separate ASR vs Translation confidence via DomainSafetyEngine
+    const reliability = DomainSafetyEngine.evaluateTurnReliability(
+      asrConf ?? 0.88,
+      res.translationConfidence,
+      res.method,
+      trimmed,
+      res.targetText
+    );
+
+    setConfidenceTier(reliability.finalTier);
 
     setIsRecording(false);
     setInterimText('');

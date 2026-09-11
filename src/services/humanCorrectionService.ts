@@ -10,6 +10,8 @@
  * - Stores records locally (offline-first) with timestamp, language tags, and reviewer status.
  */
 
+import { S2SStorage } from './s2s/s2sStorage';
+
 export interface HumanCorrectionRecord {
   id: string;
   rawText: string;
@@ -21,6 +23,7 @@ export interface HumanCorrectionRecord {
   timestamp: number;
   engine: string;
   status: 'pending_review' | 'approved_correction' | 'flagged';
+  verificationLevel?: 'AI_OUTPUT' | 'USER_CORRECTED' | 'HUMAN_REVIEWED' | 'EXPERT_VERIFIED';
   notes?: string;
 }
 
@@ -51,6 +54,7 @@ export function saveHumanCorrection(params: {
   rawTranslation?: string;
   correctedTranslation?: string;
   engine?: string;
+  verificationLevel?: 'AI_OUTPUT' | 'USER_CORRECTED' | 'HUMAN_REVIEWED' | 'EXPERT_VERIFIED';
   notes?: string;
 }): HumanCorrectionRecord {
   const record: HumanCorrectionRecord = {
@@ -64,6 +68,7 @@ export function saveHumanCorrection(params: {
     timestamp: Date.now(),
     engine: params.engine || 'IndicConformer / WebSpeech',
     status: 'approved_correction',
+    verificationLevel: params.verificationLevel || 'USER_CORRECTED',
     notes: params.notes
   };
 
@@ -74,6 +79,9 @@ export function saveHumanCorrection(params: {
   } catch (err) {
     console.error('[HumanCorrectionService] Failed to save correction:', err);
   }
+
+  // Enqueue into offline sync queue
+  S2SStorage.enqueueSyncItem('human_correction', record, record.id).catch(() => {});
 
   return record;
 }

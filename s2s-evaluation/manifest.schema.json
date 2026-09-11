@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "S2SSpeechEvaluationManifest",
+  "description": "Schema for Bhasha Setu S2S real speech evaluation manifests",
+  "type": "object",
+  "required": ["version", "language", "environment", "noiseCondition", "samples"],
+  "properties": {
+    "version": { "type": "string" },
+    "language": { "type": "string", "enum": ["sat", "hin", "eng"] },
+    "environment": {
+      "type": "string",
+      "enum": ["quiet_room", "office", "classroom", "hospital", "outdoor", "crowded"]
+    },
+    "noiseCondition": {
+      "type": "string",
+      "enum": ["clean", "fan_noise", "vehicle_noise", "background_chatter", "low_mic"]
+    },
+    "samples": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sampleId", "speakerId", "referenceTranscript", "referenceTranslation", "domain"],
+        "properties": {
+          "sampleId": { "type": "string" },
+          "speakerId": { "type": "string" },
+          "demographicCategory": {
+            "type": "string",
+            "enum": ["adult_male", "adult_female", "elderly_male", "elderly_female", "child"]
+          },
+          "audioFile": { "type": "string" },
+          "durationMs": { "type": "number" },
+          "domain": {
+            "type": "string",
+            "enum": ["HEALTHCARE", "EDUCATION", "AGRICULTURE", "ADMINISTRATION", "GENERAL", "PROPER_NOUNS"]
+          },
+          "referenceTranscript": { "type": "string" },
+          "referenceTranslation": { "type": "string" },
+          "evaluationType": { "type": "string", "enum": ["SIMULATED", "REAL_AUDIO"] },
+          "validationStatus": {
+            "type": "string",
+            "enum": ["TESTED", "REAL-WORLD VALIDATED", "NOT YET VALIDATED", "REAL AUDIO VALIDATION PENDING"]
+          }
+        }
+      }
+    }
+  }
+}
