@@ -161,6 +161,8 @@ export const SpeechToSpeechPage: React.FC = () => {
         };
 
         setMessages(prev => [...prev, newMsg]);
+        // ✅ FIX: Reset activeSpeaker immediately when speech + translation are done
+        // so the button turns blue right away — independent of TTS playback duration.
         setActiveSpeaker(null);
         setLiveTranscript('');
         setStatusMessage(null);
@@ -238,7 +240,10 @@ export const SpeechToSpeechPage: React.FC = () => {
   };
 
   const handleStopListening = () => {
+    // ✅ FIX: Immediately clear activeSpeaker so the button turns blue instantly
+    // before the controller finishes processing (translation + TTS).
     setActiveSpeaker(null);
+    setLiveTranscript('');
     setStatusMessage(null);
     if (controllerRef.current) {
       controllerRef.current.stopListening();

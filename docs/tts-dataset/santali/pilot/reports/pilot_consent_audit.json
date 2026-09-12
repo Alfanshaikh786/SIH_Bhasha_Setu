@@ -1,0 +1,12 @@
+{
+  "generatedAt": "2026-09-12T14:08:25.169Z",
+  "consentSpecVersion": "v1.0.0",
+  "plainLanguageFormVersion": "v1.0.0",
+  "mandatoryPermissions": [
+    "modelTraining",
+    "plainLanguageSigned"
+  ],
+  "withdrawalPolicyOperational": true,
+  "simulatedWithdrawalsVerified": 1,
+  "actualRealConsentFormsLogged": 0
+}

@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-09-12T14:10:06.383Z",
+  "distribution": {
+    "Mayurbhanj": 36
+  },
+  "primaryDialect": "Mayurbhanj (Standard Ol Chiki Literary Reference)",
+  "secondaryDialectsTargeted": [
+    "Northern / Santal Parganas",
+    "West Bengal Border Variety"
+  ],
+  "dialectConfidenceLevels": {
+    "HIGH": 36,
+    "MEDIUM": 0,
+    "UNVERIFIED": 0
+  }
+}

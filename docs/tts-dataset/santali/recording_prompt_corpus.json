@@ -1,0 +1,119 @@
+[
+  {
+    "promptId": "PROMPT_GEN_001",
+    "category": "general_greeting",
+    "text": "ᱡᱚᱦᱟᱨ, ᱟᱢ ᱫᱚ ᱪᱮᱫ ᱞᱮᱠᱟ ᱢᱮᱱᱟᱜ-ᱟ?",
+    "normalizedText": "ᱡᱚᱦᱟᱨ, ᱟᱢ ᱫᱚ ᱪᱮᱫ ᱞᱮᱠᱟ ᱢᱮᱱᱟᱜ-ᱟ?",
+    "domain": "General Conversation",
+    "phoneticFocus": "Greetings, glottal hyphen, checked consonant ᱜ",
+    "provenance": "Bhasha Setu Verified Core Lexicon"
+  },
+  {
+    "promptId": "PROMPT_GEN_002",
+    "category": "general_greeting",
+    "text": "ᱥᱟᱹᱜᱩᱱ ᱫᱟᱨᱟᱢ • ᱟᱞᱮᱭᱟᱜ ᱟᱹᱛᱩ ᱨᱮ ᱟᱯᱮᱭᱟᱜ ᱥᱟᱹᱜᱩᱱ ᱫᱟᱨᱟᱢ ᱾",
+    "normalizedText": "ᱥᱟᱹᱜᱩᱱ ᱫᱟᱨᱟᱢ ᱟᱞᱮᱭᱟᱜ ᱟᱹᱛᱩ ᱨᱮ ᱟᱯᱮᱭᱟᱜ ᱥᱟᱹᱜᱩᱱ ᱫᱟᱨᱟᱢ ᱾",
+    "domain": "General Conversation",
+    "phoneticFocus": "Ahad diacritic on ᱥᱟᱹ, vowel harmony",
+    "provenance": "Santhali-Words.csv Row 1"
+  },
+  {
+    "promptId": "PROMPT_GEN_003",
+    "category": "general_daily",
+    "text": "ᱤᱧ ᱫᱚ ᱵᱮᱥ ᱜᱮ ᱢᱮᱱᱟᱹᱧᱟ ᱾ ᱟᱢ ᱚᱠᱟᱛᱮᱢ ᱥᱮᱱᱚᱜ ᱠᱟᱱᱟ?",
+    "normalizedText": "ᱤᱧ ᱫᱚ ᱵᱮᱥ ᱜᱮ ᱢᱮᱱᱟᱹᱧᱟ ᱾ ᱟᱢ ᱚᱠᱟᱛᱮᱢ ᱥᱮᱱᱚᱜ ᱠᱟᱱᱟ?",
+    "domain": "General Conversation",
+    "phoneticFocus": "Palatal nasal ᱧ, diacritic ᱹ in ᱢᱮᱱᱟᱹᱧᱟ",
+    "provenance": "Bhasha Setu Verified Dialogues"
+  },
+  {
+    "promptId": "PROMPT_EDU_001",
+    "category": "education_classroom",
+    "text": "ᱥᱟᱱᱟᱢ ᱜᱤᱫᱽᱨᱟᱹ ᱱᱤᱛᱚᱜ ᱪᱟᱱᱟᱪ ᱨᱮ ᱫᱩᱲᱩᱵ ᱯᱮ ᱾",
+    "normalizedText": "ᱥᱟᱱᱟᱢ ᱜᱤᱫᱽᱨᱟᱹ ᱱᱤᱛᱚᱜ ᱪᱟᱱᱟᱪ ᱨᱮ ᱫᱩᱲᱩᱵ ᱯᱮ ᱾",
+    "domain": "Education",
+    "phoneticFocus": "Retroflex flap ᱲ, conjunct marker ᱽ",
+    "provenance": "Classroom Pedagogy Corpus"
+  },
+  {
+    "promptId": "PROMPT_EDU_002",
+    "category": "education_explanation",
+    "text": "ᱛᱮᱦᱮᱧ ᱫᱚ ᱵᱚᱱ ᱯᱟᱲᱦᱟᱣᱟ ᱪᱮᱫ ᱞᱮᱠᱟᱛᱮ ᱫᱟᱜ ᱡᱟᱹᱲᱤ ᱦᱩᱭᱩᱜ ᱠᱟᱱᱟ ᱾",
+    "normalizedText": "ᱛᱮᱦᱮᱧ ᱫᱚ ᱵᱚᱱ ᱯᱟᱲᱦᱟᱣᱟ ᱪᱮᱫ ᱞᱮᱠᱟᱛᱮ ᱫᱟᱜ ᱡᱟᱹᱲᱤ ᱦᱩᱭᱩᱜ ᱠᱟᱱᱟ ᱾",
+    "domain": "Education",
+    "phoneticFocus": "Aspiration ᱲᱦ, vowel reduction",
+    "provenance": "Classroom Science Module"
+  },
+  {
+    "promptId": "PROMPT_HLT_001",
+    "category": "healthcare_instructions",
+    "text": "ᱥᱤᱠᱤᱞ ᱥᱮᱞ ᱢᱟᱭᱟᱢ ᱵᱤᱰᱟᱹᱣ ᱞᱟᱹᱜᱤᱫ ᱦᱟᱥᱯᱟᱛᱟᱞ ᱥᱮᱱᱚᱜ ᱢᱮ ᱾",
+    "normalizedText": "ᱥᱤᱠᱤᱞ ᱥᱮᱞ ᱢᱟᱭᱟᱢ ᱵᱤᱰᱟᱹᱣ ᱞᱟᱹᱜᱤᱫ ᱦᱟᱥᱯᱟᱛᱟᱞ ᱥᱮᱱᱚᱜ ᱢᱮ ᱾",
+    "domain": "Healthcare",
+    "phoneticFocus": "Clinical terms, ahad diacritics in ᱵᱤᱰᱟᱹᱣ",
+    "provenance": "Public Health Advisory"
+  },
+  {
+    "promptId": "PROMPT_HLT_002",
+    "category": "healthcare_body",
+    "text": "ᱵᱚᱦᱚᱜ ᱦᱟᱹᱥᱩ, ᱞᱟᱡ ᱦᱟᱹᱥᱩ ᱟᱨ ᱨᱩᱣᱟᱹ ᱦᱩᱭ ᱞᱮᱱᱠᱷᱟᱱ ᱨᱟᱱ ᱡᱚᱢ ᱢᱮ ᱾",
+    "normalizedText": "ᱵᱚᱦᱚᱜ ᱦᱟᱹᱥᱩ, ᱞᱟᱡ ᱦᱟᱹᱥᱩ ᱟᱨ ᱨᱩᱣᱟᱹ ᱦᱩᱭ ᱞᱮᱱᱠᱷᱟᱱ ᱨᱟᱱ ᱡᱚᱢ ᱢᱮ ᱾",
+    "domain": "Healthcare",
+    "phoneticFocus": "Anatomy terms: ᱵᱚᱦᱚᱜ (head), ᱞᱟᱡ (stomach)",
+    "provenance": "Santhali-Words.csv Parts of Body & Symptoms"
+  },
+  {
+    "promptId": "PROMPT_AGR_001",
+    "category": "agriculture_practical",
+    "text": "ᱫᱟᱜ ᱡᱟᱹᱲᱤ ᱮᱦᱚᱵ ᱮᱱ ᱠᱷᱟᱱ ᱦᱳᱲᱳ ᱨᱚᱦᱚᱭ ᱮᱛᱚᱦᱚᱵ ᱢᱮ ᱾",
+    "normalizedText": "ᱫᱟᱜ ᱡᱟᱹᱲᱤ ᱮᱦᱚᱵ ᱮᱱ ᱠᱷᱟᱱ ᱦᱳᱲᱳ ᱨᱚᱦᱚᱭ ᱮᱛᱚᱦᱚᱵ ᱢᱮ ᱾",
+    "domain": "Agriculture",
+    "phoneticFocus": "Agricultural terms: ᱦᱳᱲᱳ (paddy), ᱨᱚᱦᱚᱭ (planting)",
+    "provenance": "Tribal Livelihood Corpus"
+  },
+  {
+    "promptId": "PROMPT_AGR_002",
+    "category": "agriculture_tools",
+    "text": "ᱱᱟᱦᱮᱞ ᱟᱨ ᱟᱨᱟᱺᱲ ᱤᱫᱤ ᱠᱟᱛᱮ ᱠᱷᱮᱛ ᱛᱮ ᱪᱟᱞᱟᱣ ᱢᱮ ᱾",
+    "normalizedText": "ᱱᱟᱦᱮᱞ ᱟᱨ ᱟᱨᱟᱺᱲ ᱤᱫᱤ ᱠᱟᱛᱮ ᱠᱷᱮᱛ ᱛᱮ ᱪᱟᱞᱟᱣ ᱢᱮ ᱾",
+    "domain": "Agriculture",
+    "phoneticFocus": "Farming tools: ᱱᱟᱦᱮᱞ (plow), ᱟᱨᱟᱺᱲ (yoke)",
+    "provenance": "Tribal Tool & Craft Corpus"
+  },
+  {
+    "promptId": "PROMPT_NUM_001",
+    "category": "numbers_cardinal",
+    "text": "᱐, ᱑, ᱒, ᱓, ᱔, ᱕, ᱖, ᱗, ᱘, ᱙ ᱾",
+    "normalizedText": "᱐, ᱑, ᱒, ᱓, ᱔, ᱕, ᱖, ᱗, ᱘, ᱙ ᱾",
+    "domain": "Numerals",
+    "phoneticFocus": "All 10 Ol Chiki numerical digits",
+    "provenance": "Ol Chiki Numerical Range (U+1C50-U+1C59)"
+  },
+  {
+    "promptId": "PROMPT_NUM_002",
+    "category": "numbers_measurements",
+    "text": "᱒᱐᱒᱖ ᱥᱮᱨᱢᱟ ᱨᱮ ᱕᱐ ᱜᱚᱴᱟᱝ ᱜᱤᱫᱽᱨᱟᱹ ᱤᱥᱠᱩᱞ ᱠᱚ ᱦᱤᱡᱩᱜ ᱠᱟᱱᱟ ᱾",
+    "normalizedText": "᱒᱐᱒᱖ ᱥᱮᱨᱢᱟ ᱨᱮ ᱕᱐ ᱜᱚᱴᱟᱝ ᱜᱤᱫᱽᱨᱟᱹ ᱤᱥᱠᱩᱞ ᱠᱚ ᱦᱤᱡᱩᱜ ᱠᱟᱱᱟ ᱾",
+    "domain": "Numerals",
+    "phoneticFocus": "Multi-digit numbers in context",
+    "provenance": "School Field Survey"
+  },
+  {
+    "promptId": "PROMPT_QST_001",
+    "category": "questions_interrogative",
+    "text": "ᱟᱢᱟᱜ ᱧᱩᱛᱩᱢ ᱫᱚ ᱪᱮᱫ ᱠᱟᱱᱟ? ᱟᱢ ᱚᱠᱟ ᱟᱹᱛᱩ ᱨᱤᱱᱤᱡ ᱠᱟᱱᱟᱢ?",
+    "normalizedText": "ᱟᱢᱟᱜ ᱧᱩᱛᱩᱢ ᱫᱚ ᱪᱮᱫ ᱠᱟᱱᱟ? ᱟᱢ ᱚᱠᱟ ᱟᱹᱛᱩ ᱨᱤᱱᱤᱡ ᱠᱟᱱᱟᱢ?",
+    "domain": "Questions",
+    "phoneticFocus": "Rising interrogative pitch inflection",
+    "provenance": "Santhali-Words.csv Common Dialogue"
+  },
+  {
+    "promptId": "PROMPT_CMD_001",
+    "category": "commands_safety",
+    "text": "ᱥᱟᱯᱷᱟ ᱫᱟᱜ ᱧᱩᱭ ᱢᱮ ᱟᱨ ᱡᱚᱢ ᱢᱟᱬᱟᱝ ᱨᱮ ᱛᱤ ᱟᱹᱨᱩᱵ ᱢᱮ ᱾",
+    "normalizedText": "ᱥᱟᱯᱷᱟ ᱫᱟᱜ ᱧᱩᱭ ᱢᱮ ᱟᱨ ᱡᱚᱢ ᱢᱟᱬᱟᱝ ᱨᱮ ᱛᱤ ᱟᱹᱨᱩᱵ ᱢᱮ ᱾",
+    "domain": "Commands",
+    "phoneticFocus": "Imperatives and public health safety",
+    "provenance": "Public Hygiene Advisory"
+  }
+]

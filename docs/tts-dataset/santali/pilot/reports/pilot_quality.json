@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-09-12T14:08:25.168Z",
+  "evaluationType": "INFRASTRUCTURE_VALIDATION",
+  "targetAcousticSpecs": {
+    "sampleRateHz": 48000,
+    "channels": 1,
+    "bitDepth": 24,
+    "maxClippingPercent": 0,
+    "maxNoiseFloorDb": -45,
+    "targetRmsRangeDb": [
+      -28,
+      -14
+    ]
+  },
+  "automatedAudioQaReady": true,
+  "humanListeningQaProtocolReady": true,
+  "transcriptionQaProtocolReady": true
+}

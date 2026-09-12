@@ -1,0 +1,12 @@
+{
+  "generatedAt": "2026-09-12T14:08:25.168Z",
+  "targetCohort": {
+    "minSpeakers": 4,
+    "targetSpeakers": 8,
+    "genderBalance": "50% Female / 50% Male",
+    "maxPromptsPerSpeakerCap": 50,
+    "maxContinuousSessionMinutes": 45
+  },
+  "actualRealSpeakers": 0,
+  "note": "Zero real human participants fabricated."
+}

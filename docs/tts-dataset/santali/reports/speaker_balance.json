@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-09-12T14:10:06.383Z",
+  "policy": {
+    "minUsefulPrompts": 25,
+    "recommendedPrompts": 150,
+    "maxCapPrompts": 500,
+    "maxContinuousSessionMinutes": 45,
+    "recommendedRestMinutes": 15
+  },
+  "targetSpeakers": {
+    "minimumRequired": 6,
+    "recommended": 12,
+    "genderBalanceTarget": "50% Female / 50% Male",
+    "ageRangeTiers": [
+      "18-30",
+      "31-50",
+      "51+"
+    ]
+  },
+  "currentRecordedSpeakers": 0,
+  "note": "Phase 9 strictly specifies corpus and review policies. No fake speaker contributions have been fabricated."
+}

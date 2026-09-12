@@ -31,9 +31,16 @@ export class S2SASRAdapter {
   private startTime: number = 0;
   private options: ASRAdapterOptions = {};
 
-  private static readonly WS_URL = 
-    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_ASR_WS_URL) || 
-    'ws://127.0.0.1:5000/api/asr/stream';
+  private static getWsUrl(): string {
+    if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_ASR_WS_URL) {
+      return import.meta.env.VITE_ASR_WS_URL;
+    }
+    if (typeof window !== 'undefined' && window.location?.hostname) {
+      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      return `${proto}//${window.location.hostname}:5000/api/asr/stream`;
+    }
+    return 'ws://127.0.0.1:5000/api/asr/stream';
+  }
 
   constructor(options: ASRAdapterOptions = {}) {
     this.options = options;
@@ -103,7 +110,7 @@ export class S2SASRAdapter {
       let isConnected = false;
 
       try {
-        this.ws = new WebSocket(S2SASRAdapter.WS_URL);
+        this.ws = new WebSocket(S2SASRAdapter.getWsUrl());
       } catch (e: any) {
         this.emitError('WEBSOCKET_ERROR', 'Unable to initialize WebSocket connection for Santali ASR.', turnId);
         resolve();

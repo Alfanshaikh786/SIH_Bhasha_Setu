@@ -49,7 +49,7 @@ export class PhoneticTTSAdapter implements ITTSAdapter {
 
   public canHandle(langCode: string): boolean {
     const code = langCode.toLowerCase().trim();
-    return code === 'sat' || code === 'santali' || code === 'unr' || code === 'hoc';
+    return code === 'sat' || code === 'santali';
   }
 
   public synthesize(text: string, langCode: string, options: TTSPlaybackOptions = {}): void {
@@ -147,12 +147,73 @@ export class NeuralSantaliTTSAdapter implements ITTSAdapter {
 }
 
 /**
+ * FutureNeuralMundariTTSAdapter: Architecture stub for future native Mundari neural voice weights.
+ */
+export class FutureNeuralMundariTTSAdapter implements ITTSAdapter {
+  public readonly id = 'future_neural_mundari_tts';
+  public readonly name = 'Native Mundari Neural Voice (Architecture Stub)';
+  public readonly engineType: TTSEngineType = 'NEURAL_ON_DEVICE_TTS';
+  public readonly validationStatus: TTSValidationStatus = 'FUTURE';
+
+  public canHandle(langCode: string): boolean {
+    const code = langCode.toLowerCase().trim();
+    return code === 'unr' || code === 'mundari';
+  }
+
+  public synthesize(text: string, langCode: string, options: TTSPlaybackOptions = {}): void {
+    console.warn('[FutureNeuralMundariTTSAdapter] Native Mundari neural weights not yet loaded. Falling back to phonetic bridge.');
+    const fallback = new PhoneticTTSAdapter();
+    fallback.synthesize(text, langCode, options);
+  }
+
+  public stop(): void {
+    try {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    } catch {}
+  }
+}
+
+/**
+ * FutureNeuralHoTTSAdapter: Architecture stub for future native Ho neural voice weights.
+ */
+export class FutureNeuralHoTTSAdapter implements ITTSAdapter {
+  public readonly id = 'future_neural_ho_tts';
+  public readonly name = 'Native Ho Neural Voice (Architecture Stub)';
+  public readonly engineType: TTSEngineType = 'NEURAL_ON_DEVICE_TTS';
+  public readonly validationStatus: TTSValidationStatus = 'FUTURE';
+
+  public canHandle(langCode: string): boolean {
+    const code = langCode.toLowerCase().trim();
+    return code === 'hoc' || code === 'ho';
+  }
+
+  public synthesize(text: string, langCode: string, options: TTSPlaybackOptions = {}): void {
+    console.warn('[FutureNeuralHoTTSAdapter] Native Ho neural weights not yet loaded. Falling back to phonetic bridge.');
+    const fallback = new PhoneticTTSAdapter();
+    fallback.synthesize(text, langCode, options);
+  }
+
+  public stop(): void {
+    try {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    } catch {}
+  }
+}
+
+/**
  * TTSAdapterRegistry: Coordinates active adapters per language code.
  */
 export class TTSAdapterRegistry {
   private static adapters: ITTSAdapter[] = [
     new PhoneticTTSAdapter(),
-    new NativeBrowserTTSAdapter()
+    new NativeBrowserTTSAdapter(),
+    new NeuralSantaliTTSAdapter(),
+    new FutureNeuralMundariTTSAdapter(),
+    new FutureNeuralHoTTSAdapter()
   ];
 
   public static getAdapterForLanguage(langCode: string): ITTSAdapter {

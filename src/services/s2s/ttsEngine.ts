@@ -13,6 +13,7 @@
 
 import { TTSPlaybackOptions } from './s2sTypes';
 import { TTSAdapterRegistry, ITTSAdapter } from './ttsAdapter';
+import { TTSQueue } from '../tts';
 
 export type { TTSPlaybackOptions } from './s2sTypes';
 
@@ -101,6 +102,11 @@ export class S2STTSEngine {
     try {
       TTSAdapterRegistry.getAdapterForLanguage('sat').stop();
       TTSAdapterRegistry.getAdapterForLanguage('hin').stop();
+      TTSAdapterRegistry.getAdapterForLanguage('eng').stop();
+    } catch {}
+
+    try {
+      TTSQueue.stop();
     } catch {}
 
     this.isSpeakingNow = false;

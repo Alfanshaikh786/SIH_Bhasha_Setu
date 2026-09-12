@@ -50,8 +50,12 @@ export interface ASRStatusResponse {
   device: string;
 }
 
-const ASR_BASE_URL = import.meta.env.VITE_ASR_API_URL || 'http://127.0.0.1:5000/api/asr';
-const ASR_WS_URL = import.meta.env.VITE_ASR_WS_URL || 'ws://127.0.0.1:5000/api/asr/stream';
+const getBaseHostname = () => (typeof window !== 'undefined' && window.location?.hostname) ? window.location.hostname : '127.0.0.1';
+const getProtocol = () => (typeof window !== 'undefined' && window.location?.protocol === 'https:') ? 'https:' : 'http:';
+const getWsProtocol = () => (typeof window !== 'undefined' && window.location?.protocol === 'https:') ? 'wss:' : 'ws:';
+
+const ASR_BASE_URL = import.meta.env.VITE_ASR_API_URL || `${getProtocol()}//${getBaseHostname()}:5000/api/asr`;
+const ASR_WS_URL = import.meta.env.VITE_ASR_WS_URL || `${getWsProtocol()}//${getBaseHostname()}:5000/api/asr/stream`;
 
 /**
  * Checks the operational status of the neural ASR engine.

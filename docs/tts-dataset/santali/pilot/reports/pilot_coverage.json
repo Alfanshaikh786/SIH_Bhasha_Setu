@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-09-12T14:08:25.169Z",
+  "pilotPromptSetSize": 14,
+  "sentenceLengthsCovered": [
+    "VERY_SHORT",
+    "SHORT",
+    "MEDIUM",
+    "LONG",
+    "VERY_LONG"
+  ],
+  "sentenceTypesCovered": [
+    "STATEMENT",
+    "QUESTION",
+    "CONVERSATIONAL_EXCHANGE",
+    "COMMAND",
+    "EXPLANATION",
+    "REQUEST",
+    "LIST"
+  ],
+  "allLengthTiersPresent": true
+}

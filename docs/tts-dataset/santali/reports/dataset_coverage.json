@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-09-12T14:10:06.381Z",
+  "totalPrompts": 36,
+  "categoryCoverage": {
+    "GENERAL_CONVERSATION": 4,
+    "EDUCATION": 4,
+    "HEALTHCARE": 3,
+    "AGRICULTURE": 2,
+    "COMMUNITY": 2,
+    "DAILY_LIFE": 1,
+    "DIRECTIONS": 2,
+    "SAFETY": 2,
+    "NUMERALS": 3,
+    "DATES_AND_TIME": 2,
+    "MEASUREMENTS": 2,
+    "QUESTIONS": 2,
+    "COMMANDS": 2,
+    "DESCRIPTIONS": 2,
+    "NARRATIVE": 2,
+    "MIXED_LANGUAGE": 1
+  },
+  "sentenceLengthDistribution": {
+    "VERY_SHORT": 4,
+    "SHORT": 8,
+    "MEDIUM": 20,
+    "LONG": 3,
+    "VERY_LONG": 1
+  },
+  "sentenceTypeDistribution": {
+    "STATEMENT": 10,
+    "QUESTION": 3,
+    "COMMAND": 11,
+    "REQUEST": 2,
+    "WARNING": 1,
+    "EXCLAMATION": 1,
+    "LIST": 3,
+    "EXPLANATION": 4,
+    "CONVERSATIONAL_EXCHANGE": 1
+  },
+  "totalWords": 334,
+  "totalCharacters": 1922,
+  "estimatedDurationMinutes": 2.4
+}

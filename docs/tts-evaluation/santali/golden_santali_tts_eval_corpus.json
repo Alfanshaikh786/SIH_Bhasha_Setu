@@ -1,0 +1,302 @@
+[
+  {
+    "sampleId": "SAT_EVAL_001",
+    "text": "ᱡᱚᱦᱟᱨ",
+    "script": "ol_chiki",
+    "category": "short_sentence",
+    "provenance": "Bhasha Setu Core Lexicon / Santhali-Words.csv",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali (Mayurbhanj / Santhal Parganas)",
+    "notes": "Universal greeting / respectful salutation; essential phoneme baseline"
+  },
+  {
+    "sampleId": "SAT_EVAL_002",
+    "text": "ᱥᱟᱱᱛᱟᱲᱤ",
+    "script": "ol_chiki",
+    "category": "short_sentence",
+    "provenance": "Bhasha Setu Core Lexicon",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Language self-designation with retroflex flap 'ᱲ' and checked vowel"
+  },
+  {
+    "sampleId": "SAT_EVAL_003",
+    "text": "ᱥᱟᱹᱜᱩᱱ ᱫᱟᱨᱟᱢ",
+    "script": "ol_chiki",
+    "category": "short_sentence",
+    "provenance": "Bhasha Setu Core Lexicon / Santhali-Words.csv",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Welcome phrase containing ahad 'ᱹ' diacritic on 'ᱥᱟᱹ'"
+  },
+  {
+    "sampleId": "SAT_EVAL_004",
+    "text": "ᱟᱢ ᱫᱚ ᱪᱮᱫ ᱞᱮᱠᱟ ᱢᱮᱱᱟᱜ-ᱟ?",
+    "script": "ol_chiki",
+    "category": "question",
+    "provenance": "Bhasha Setu Core Lexicon / Santhali-Words.csv",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Standard conversational question 'How are you?' featuring checked consonant 'ᱜ' and glottal hyphen"
+  },
+  {
+    "sampleId": "SAT_EVAL_005",
+    "text": "ᱟᱢᱟᱜ ᱧᱩᱛᱩᱢ ᱪᱮᱫ?",
+    "script": "ol_chiki",
+    "category": "question",
+    "provenance": "Bhasha Setu Core Lexicon / Santhali-Words.csv",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Question 'What is your name?' featuring palatal nasal 'ᱧ' (U+1C66)"
+  },
+  {
+    "sampleId": "SAT_EVAL_006",
+    "text": "ᱤᱧ ᱫᱚ ᱵᱮᱥ ᱜᱮ ᱢᱮᱱᱟᱹᱧᱟ ᱾",
+    "script": "ol_chiki",
+    "category": "short_sentence",
+    "provenance": "Bhasha Setu Core Lexicon / Santhali-Words.csv",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Response 'I am fine' featuring diacritic ahad 'ᱹ' in 'ᱢᱮᱱᱟᱹᱧᱟ'"
+  },
+  {
+    "sampleId": "SAT_EVAL_007",
+    "text": "ᱟᱞᱮᱭᱟᱜ ᱟᱹᱛᱩ ᱨᱮ ᱟᱯᱮᱭᱟᱜ ᱥᱟᱹᱜᱩᱱ ᱫᱟᱨᱟᱢ ᱾",
+    "script": "ol_chiki",
+    "category": "long_sentence",
+    "provenance": "Bhasha Setu Verified Parallel Corpus",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Long declarative sentence 'Welcome to our village' testing prosodic rhythm across multi-word clauses"
+  },
+  {
+    "sampleId": "SAT_EVAL_008",
+    "text": "ᱫᱟᱨᱟᱭ ᱠᱟᱱ ᱵᱟᱪᱷᱱᱟᱣ ᱨᱮ ᱥᱟᱱᱟᱢ ᱦᱚᱲ ᱵᱷᱳᱴ ᱮᱢ ᱞᱟᱹᱜᱤᱫ ᱥᱟᱯᱲᱟᱣ ᱢᱮᱱᱟᱜ ᱠᱚᱣᱟ ᱾",
+    "script": "ol_chiki",
+    "category": "long_sentence",
+    "provenance": "Bhasha Setu Civic Corpus / Santhali-Words.csv",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Complex multi-clause administrative sentence testing sustained neural pitch and breath modeling"
+  },
+  {
+    "sampleId": "SAT_EVAL_009",
+    "text": "ᱱᱚᱣᱟ ᱯᱚᱛᱚᱵ ᱨᱮ ᱟᱹᱰᱤ ᱱᱟᱯᱟᱭ ᱠᱟᱹᱦᱱᱤ ᱚᱞ ᱟᱠᱟᱱᱟ ᱾",
+    "script": "ol_chiki",
+    "category": "long_sentence",
+    "provenance": "Bhasha Setu Educational Corpus / Santhali-Words.csv",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Educational sentence testing checked consonant 'ᱜ' in 'ᱟᱹᱰᱤ' and 'ᱚᱞ ᱟᱠᱟᱱᱟ'"
+  },
+  {
+    "sampleId": "SAT_EVAL_010",
+    "text": "ᱚᱲᱟᱜ ᱪᱟᱞᱟᱣ ᱢᱮ ᱾",
+    "script": "ol_chiki",
+    "category": "instruction",
+    "provenance": "Bhasha Setu Classroom Commands / Santhali-Words.csv",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Imperative instruction 'Go home' with retroflex 'ᱲ' and checked vowel 'ᱮ'"
+  },
+  {
+    "sampleId": "SAT_EVAL_011",
+    "text": "ᱫᱩᱲᱩᱵ ᱢᱮ ᱟᱨ ᱥᱟᱱᱛᱟᱲᱤ ᱯᱚᱛᱚᱵ ᱯᱟᱲᱦᱟᱣ ᱢᱮ ᱾",
+    "script": "ol_chiki",
+    "category": "instruction",
+    "provenance": "Bhasha Setu Classroom Commands / Santhali-Words.csv",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Compound classroom instruction 'Sit down and read the Santali book'"
+  },
+  {
+    "sampleId": "SAT_EVAL_012",
+    "text": "ᱥᱟᱯᱷᱟ ᱫᱟᱜ ᱧᱩᱭ ᱢᱮ ᱾",
+    "script": "ol_chiki",
+    "category": "instruction",
+    "provenance": "Bhasha Setu Public Health Corpus",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Healthcare instruction 'Drink clean water'"
+  },
+  {
+    "sampleId": "SAT_EVAL_013",
+    "text": "ᱦᱟᱥᱯᱟᱛᱟᱞ ᱫᱚ ᱚᱠᱟᱨᱮ ᱢᱮᱱᱟᱜ-ᱟ?",
+    "script": "ol_chiki",
+    "category": "healthcare",
+    "provenance": "Bhasha Setu Healthcare Dialogues",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Clinical query 'Where is the hospital?'"
+  },
+  {
+    "sampleId": "SAT_EVAL_014",
+    "text": "ᱥᱤᱠᱤᱞ ᱥᱮᱞ ᱢᱟᱭᱟᱢ ᱵᱤᱰᱟᱹᱣ",
+    "script": "ol_chiki",
+    "category": "healthcare",
+    "provenance": "Bhasha Setu Sickle Cell Screening Mission",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Medical diagnostic term 'Sickle cell blood test'"
+  },
+  {
+    "sampleId": "SAT_EVAL_015",
+    "text": "ᱨᱩᱣᱟᱹ ᱦᱩᱭᱩᱜ ᱠᱷᱟᱱ ᱫᱟᱠᱛᱚᱨ ᱴᱷᱮᱱ ᱥᱮᱱᱚᱜ ᱢᱮ ᱾",
+    "script": "ol_chiki",
+    "category": "healthcare",
+    "provenance": "Bhasha Setu Clinical Outreach / Santhali-Words.csv",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Clinical guidance 'If you have fever, consult a doctor'"
+  },
+  {
+    "sampleId": "SAT_EVAL_016",
+    "text": "ᱛᱮᱦᱮᱧ ᱫᱚ ᱪᱮᱫ ᱥᱟᱛᱟᱢ ᱵᱚᱱ ᱯᱟᱲᱦᱟᱣᱟ?",
+    "script": "ol_chiki",
+    "category": "classroom_phrase",
+    "provenance": "Bhasha Setu Classroom Pedagogy",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Teacher query 'What topic will we study today?'"
+  },
+  {
+    "sampleId": "SAT_EVAL_017",
+    "text": "ᱟᱢᱟᱜ ᱠᱷᱟᱛᱟ ᱩᱫᱩᱜ ᱢᱮ ᱾",
+    "script": "ol_chiki",
+    "category": "classroom_phrase",
+    "provenance": "Bhasha Setu Classroom Pedagogy",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Classroom instruction 'Show your notebook'"
+  },
+  {
+    "sampleId": "SAT_EVAL_018",
+    "text": "ᱥᱟᱱᱟᱢ ᱜᱤᱫᱽᱨᱟᱹ ᱱᱤᱛᱚᱜ ᱪᱩᱯ ᱛᱟᱦᱮᱸᱱ ᱯᱮ ᱾",
+    "script": "ol_chiki",
+    "category": "classroom_phrase",
+    "provenance": "Bhasha Setu Classroom Pedagogy",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Classroom command 'All children remain quiet now'"
+  },
+  {
+    "sampleId": "SAT_EVAL_019",
+    "text": "᱐ ᱑ ᱒ ᱓ ᱔ ᱕ ᱖ ᱗ ᱘ ᱙",
+    "script": "ol_chiki",
+    "category": "numbers",
+    "provenance": "Ol Chiki Numerical Range (U+1C50 - U+1C59)",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Pure Ol Chiki digits 0 through 9 (sunye, mit, bar, pe, pune, more, turui, eae, iral, are)"
+  },
+  {
+    "sampleId": "SAT_EVAL_020",
+    "text": "ᱢᱤᱫ, ᱵᱟᱨ, ᱯᱮ, ᱯᱩᱱ, ᱢᱚᱬᱮ, ᱛᱩᱨᱩᱭ, ᱮᱟᱭ, ᱤᱨᱟᱹᱞ, ᱟᱨᱮ, ᱜᱮᱞ ᱾",
+    "script": "ol_chiki",
+    "category": "numbers",
+    "provenance": "Bhasha Setu Number Lexicon",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Ol Chiki cardinal number words 1 through 10"
+  },
+  {
+    "sampleId": "SAT_EVAL_021",
+    "text": "᱒᱐᱒᱖ ᱥᱮᱨᱢᱟ ᱨᱮ ᱕᱐ ᱜᱚᱴᱟᱝ ᱜᱤᱫᱽᱨᱟᱹ ᱤᱥᱠᱩᱞ ᱠᱚ ᱦᱤᱡᱩᱜ ᱠᱟᱱᱟ ᱾",
+    "script": "ol_chiki",
+    "category": "numbers",
+    "provenance": "Bhasha Setu Field Survey Data",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Sentence combining Ol Chiki multi-digit numerals with text (year 2026, 50 children)"
+  },
+  {
+    "sampleId": "SAT_EVAL_022",
+    "text": "ᱟᱹᱰᱤ ᱠᱟᱹᱴᱤᱡ ᱪᱮᱬᱮ ᱚᱲᱟᱜ ᱪᱮᱛᱟᱱ ᱨᱮ ᱩᱰᱟᱹᱣᱜ ᱠᱟᱱᱟ ᱾",
+    "script": "ol_chiki",
+    "category": "difficult_word",
+    "provenance": "Bhasha Setu Linguistic Stress Tests",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Sentence with dense retroflex flaps and nasal glides: 'ᱟᱹᱰᱤ', 'ᱠᱟᱹᱴᱤᱡ', 'ᱪᱮᱬᱮ', 'ᱩᱰᱟᱹᱣᱜ'"
+  },
+  {
+    "sampleId": "SAT_EVAL_023",
+    "text": "ᱵᱤᱫᱽᱭᱟᱞᱚᱭ ᱨᱮ ᱥᱟᱱᱛᱟᱲᱤ ᱥᱮᱪᱮᱫ ᱟᱹᱰᱤ ᱡᱟᱹᱨᱩᱲ ᱠᱟᱱᱟ ᱾",
+    "script": "ol_chiki",
+    "category": "difficult_word",
+    "provenance": "Bhasha Setu Educational Policy Corpus",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Tests conjunct borrow 'ᱵᱤᱫᱽᱭᱟᱞᱚᱭ' alongside native checked suffixes 'ᱥᱮᱪᱮᱫ' and diacritic 'ᱡᱟᱹᱨᱩᱲ'"
+  },
+  {
+    "sampleId": "SAT_EVAL_024",
+    "text": "ᱢᱟᱭᱟᱢ ᱵᱤᱰᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱚᱨᱡᱚ ᱱᱟᱯᱟᱭ ᱦᱮᱡ ᱮᱱᱟ ᱾",
+    "script": "ol_chiki",
+    "category": "difficult_word",
+    "provenance": "Bhasha Setu Health Diagnostic Corpus",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Tests technical healthcare terms with ahad diacritics: 'ᱵᱤᱰᱟᱹᱣ' (test/examination) and 'ᱚᱨᱡᱚ' (result)"
+  },
+  {
+    "sampleId": "SAT_EVAL_025",
+    "text": "Johar, am do ched leka menag-a?",
+    "script": "roman",
+    "category": "roman_santali",
+    "provenance": "Bhasha Setu Roman Parallel Corpus",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali (Roman transliteration)",
+    "notes": "Standard conversational Santali written in Roman script without diacritics"
+  },
+  {
+    "sampleId": "SAT_EVAL_026",
+    "text": "Aleyag aatu re apeyag sagun daram.",
+    "script": "roman",
+    "category": "roman_santali",
+    "provenance": "Bhasha Setu Roman Parallel Corpus",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali (Roman transliteration)",
+    "notes": "Formal greeting in Roman script"
+  },
+  {
+    "sampleId": "SAT_EVAL_027",
+    "text": "Nui do gai kanay. Nui do dangra kanay.",
+    "script": "roman",
+    "category": "roman_santali",
+    "provenance": "Santhali-Words.csv Parallel Lexicon",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Standard Santali",
+    "notes": "Basic declarative pair verified from parallel dictionary"
+  },
+  {
+    "sampleId": "SAT_EVAL_028",
+    "text": "ᱟᱢ classroom ᱛᱮ ᱪᱟᱞᱟᱣ ᱢᱮ ᱾",
+    "script": "mixed",
+    "category": "mixed_code_switched",
+    "provenance": "Field Observation: Tribal School Context",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Mixed Santali + English",
+    "notes": "Code-switched school command with English noun 'classroom' embedded in Ol Chiki grammar"
+  },
+  {
+    "sampleId": "SAT_EVAL_029",
+    "text": "ᱰᱟᱠᱛᱟᱨ hospital ᱨᱮ ᱢᱮᱱᱟᱭᱟ ᱾",
+    "script": "mixed",
+    "category": "mixed_code_switched",
+    "provenance": "Field Observation: Rural Clinic Context",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Mixed Santali + English",
+    "notes": "Santali loan word 'ᱰᱟᱠᱛᱟᱨ' combined with English Latin word 'hospital' and Ol Chiki locative 'ᱨᱮ'"
+  },
+  {
+    "sampleId": "SAT_EVAL_030",
+    "text": "ᱥᱟᱱᱛᱟᱲᱤ ᱟᱨ Hindi ᱵᱟᱱᱟᱨ ᱯᱟᱹᱨᱥᱤ ᱛᱮ ᱨᱚᱲ ᱢᱮ ᱾",
+    "script": "mixed",
+    "category": "mixed_code_switched",
+    "provenance": "Bhasha Setu Migrant Teacher Training Corpus",
+    "expectedLanguage": "sat",
+    "expectedDialect": "Mixed Santali + Hindi/English",
+    "notes": "Multi-script multilingual instruction targeting bilingual classroom interactions"
+  }
+]

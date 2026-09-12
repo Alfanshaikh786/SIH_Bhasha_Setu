@@ -32,6 +32,7 @@ import {
 } from './translationProviders';
 
 export { setSimulatedOffline, getSimulatedOffline };
+import { VoiceIntelligenceEngine, VoiceQualityRouter, TTSQueue, TTSVoiceRouter } from './tts';
 
 export interface TranslationResult {
   text: string;
@@ -1325,7 +1326,7 @@ export function getSpeechEngineInfo(langCode: string): SpeechPlaybackInfo {
 /**
  * Text to Speech Synthesizer with verified Santali Roman pronunciations and multi-engine voice support.
  * Optimized for Mobile (iOS Safari & Android Chrome) + Desktop with universal phonetic fallback.
- * Uses O(1) hash map lookup for instant dataset pronunciation extraction.
+ * Uses robust 7-tier pronunciation hierarchy, sentence chunking, and speech queue.
  * 
  * Enforces TTS Honesty:
  * - When native tribal voice is absent, reports phonetic pronunciation via Indian voice.
@@ -1343,166 +1344,31 @@ export function playTextSpeech(
     return;
   }
 
-  const normalizedLang = normalizeToSupportedLanguage(langCode);
-  const code3 = getLanguageCode3(normalizedLang);
-  const rawText = text.trim();
-
-  // 1. Extract phonetic spoken text:
-  let textToSpeak = rawText;
-  const parenMatch = rawText.match(/\(([^)]+)\)/);
-  const hasOlChiki = /[\u1C50-\u1C7F]/.test(rawText);
-  const isTribal = (code3 === 'sat' || code3 === 'unr' || code3 === 'hoc');
-
-  if (parenMatch && parenMatch[1] && isTribal) {
-    textToSpeak = parenMatch[1]; // Use clean Romanized pronunciation e.g. "Johar", "Nui do gai kanay"
-  } else if (hasOlChiki || isTribal) {
-    const cleanSat = rawText.replace(/[᱾᱿•()]/g, '').trim();
-
-    if (KNOWN_ROMAN_PHRASES[cleanSat]) {
-      textToSpeak = KNOWN_ROMAN_PHRASES[cleanSat];
-    } else {
-      // O(1) instantaneous dataset hash map lookup
-      const datasetMatch = lookupExactDatasetEntry(cleanSat) || lookupExactDatasetEntry(rawText);
-
-      if (datasetMatch && datasetMatch.roman) {
-        textToSpeak = datasetMatch.roman;
-      } else {
-        const vocabMatch = CORE_VOCABULARY.find(v => 
-          v.sat.trim() === rawText ||
-          v.sat.replace(/[᱾᱿•]/g, '').trim() === cleanSat ||
-          v.en.toLowerCase() === rawText.toLowerCase()
-        );
-        if (vocabMatch && vocabMatch.roman) {
-          textToSpeak = vocabMatch.roman;
-        } else if (hasOlChiki) {
-          // Fallback to Roman transliteration so all OS voices can pronounce it naturally
-          textToSpeak = transliterateOlChikiToRoman(rawText);
-        }
-      }
-    }
+  // Report honest engine status to caller
+  const engineInfo = getSpeechEngineInfo(langCode);
+  const { voice } = VoiceQualityRouter.selectBestScoredVoice(langCode);
+  if (voice) {
+    engineInfo.voiceName = voice.name;
   }
+  onStatusChange?.(engineInfo);
 
-  // Clean remaining special punctuation or symbols
-  textToSpeak = textToSpeak.replace(/[᱾᱿•/]/g, ' ').replace(/\s+/g, ' ').trim();
-  if (!textToSpeak) textToSpeak = rawText;
-
-  // Check Web Speech API support
-  if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
-    console.warn('Web Speech Synthesis not supported on this device; playing acoustic confirmation chime fallback');
-    onStatusChange?.({
-      engineType: 'audio_chime',
-      label: 'Acoustic Chime (No Speech Engine)',
-      isNative: false,
-      notes: 'Browser speech synthesis unavailable; played acoustic confirmation tone.'
-    });
-    playChimeTone();
-    onEnd?.();
-    return;
-  }
-
-  try {
-    const voices = getAvailableVoices();
-    const hasHindiVoice = voices.some(v => v.lang.startsWith('hi'));
-    const hasIndianEngVoice = voices.some(v => v.lang === 'en-IN');
-
-    // If text is Hindi but no Hindi voice exists on device, Romanize it so English voice can speak it!
-    if (code3 === 'hin' && !hasHindiVoice) {
-      textToSpeak = transliterateDevanagariToRoman(textToSpeak);
-    }
-
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-
-    // Keep global reference to prevent garbage collection on Chromium/Safari
-    if (!(window as any).__activeUtterances) {
-      (window as any).__activeUtterances = [];
-    }
-    (window as any).__activeUtterances.push(utterance);
-
-    // Select Voice & Language
-    let selectedVoice: SpeechSynthesisVoice | undefined;
-
-    if (code3 === 'eng') {
-      selectedVoice = voices.find(v => v.lang === 'en-IN') || 
-                      voices.find(v => v.lang.startsWith('en')) || 
-                      voices[0];
-      utterance.lang = selectedVoice ? selectedVoice.lang : 'en-US';
-      utterance.rate = customRate || 0.95;
-      utterance.pitch = 1.0;
-    } else if (code3 === 'hin' && hasHindiVoice) {
-      selectedVoice = voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi'));
-      utterance.lang = selectedVoice ? selectedVoice.lang : 'hi-IN';
-      utterance.rate = customRate || 0.9;
-      utterance.pitch = 1.0;
-    } else if (langCode === 'ben') {
-      selectedVoice = voices.find(v => v.lang.startsWith('bn')) || voices[0];
-      utterance.lang = selectedVoice ? selectedVoice.lang : 'bn-IN';
-      utterance.rate = customRate || 0.9;
-    } else {
-      // Tribal / Romanized phonetics: prefer Indian English (natural accent) or Hindi or default
-      selectedVoice = voices.find(v => v.lang === 'en-IN') || 
-                      voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi')) || 
-                      voices.find(v => v.lang.startsWith('en')) || 
-                      voices[0];
-      // Match utterance language to selected voice to avoid Windows SAPI language discard
-      utterance.lang = selectedVoice ? selectedVoice.lang : 'en-US';
-      utterance.rate = customRate || 0.88;
-      utterance.pitch = 1.0;
-    }
-
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-    }
-
-    // Report honest engine status to caller
-    const engineInfo = getSpeechEngineInfo(langCode);
-    if (selectedVoice) {
-      engineInfo.voiceName = selectedVoice.name;
-    }
-    onStatusChange?.(engineInfo);
-
-    const cleanup = () => {
-      const arr = (window as any).__activeUtterances;
-      if (arr) {
-        const idx = arr.indexOf(utterance);
-        if (idx !== -1) arr.splice(idx, 1);
-      }
-    };
-
-    utterance.onend = () => {
-      cleanup();
+  // Dispatch through AI Voice Intelligence Orchestrator with context analysis & prosody planning
+  VoiceIntelligenceEngine.synthesizeSpeech(text, langCode, {
+    rate: customRate,
+    onEnd: () => {
       onEnd?.();
-    };
-
-    utterance.onerror = (e) => {
-      console.warn('Speech synthesis utterance ended/interrupted:', e);
-      cleanup();
-      playChimeTone();
+    },
+    onError: () => {
       onEnd?.();
-    };
-
-    // Cancel any previous utterances, then resume and speak after short delay to prevent Chromium cancel bug
-    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-      window.speechSynthesis.cancel();
     }
+  });
+}
 
-    setTimeout(() => {
-      try {
-        if (window.speechSynthesis.paused) {
-          window.speechSynthesis.resume();
-        }
-        window.speechSynthesis.speak(utterance);
-      } catch (innerErr) {
-        console.warn('SpeechSynthesis speak error:', innerErr);
-        playChimeTone();
-        onEnd?.();
-      }
-    }, 60);
-
-  } catch (err) {
-    console.warn('Speech synthesis exception, triggering acoustic feedback:', err);
-    playChimeTone();
-    onEnd?.();
-  }
+/**
+ * Global TTS Cancellation Facade
+ */
+export function stopTextSpeech(): void {
+  VoiceIntelligenceEngine.stopSpeech();
 }
 
 

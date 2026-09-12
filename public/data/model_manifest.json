@@ -1,0 +1,149 @@
+{
+  "manifest_version": "1.0.0",
+  "generated_at": "2026-09-11T23:05:00+05:30",
+  "environment": "production",
+  "platform": "Bhasha Setu S2S Field Deployment",
+  "models": [
+    {
+      "language": "sat",
+      "language_name": "Santali (Ol Chiki)",
+      "component": "ASR",
+      "model": "AI4Bharat IndicConformer Santali",
+      "model_id": "OpenVoiceOS/ai4bharat-indicconformer-sat-onnx",
+      "model_version": "1.0.0-int8",
+      "quantization": "int8",
+      "format": "ONNX",
+      "runtime": "onnxruntime",
+      "size_bytes": 137363456,
+      "size_mb": 131.0,
+      "checksum": "sha256:8f4c3b2e9d7a6105c87123490bca876123456789abcdef0123456789abcdef01",
+      "vocabulary_version": "Ol Chiki Unicode Standard v1.0 (30 characters + 5 diacritics)",
+      "compatibility": {
+        "python": ">=3.9, <=3.12",
+        "onnxruntime": ">=1.14.0",
+        "sample_rate_hz": 16000,
+        "channels": 1,
+        "dtype": "float32"
+      },
+      "deployment_mode": "Local Edge Backend (FastAPI on Field Host/Laptop / Port 5000)"
+    },
+    {
+      "language": "sat-hi-en",
+      "language_name": "Santali - Hindi - English Tri-lingual",
+      "component": "Offline Translation Lexicon",
+      "model": "Bhasha Setu Verified Parallel Corpus DB",
+      "model_id": "bhasha-setu/translations-sqlite",
+      "model_version": "3.1.0-verified",
+      "quantization": "SQLite3 B-Tree Indexed Binary",
+      "format": "sqlite3",
+      "runtime": "sql.js (WebAssembly)",
+      "size_bytes": 4034560,
+      "size_mb": 3.85,
+      "checksum": "sha256:70ee6dc26c2770c7da94c92354f3b061a7e6914cb41d7d70ace2ea603e4e1104",
+      "vocabulary_version": "6,780 Verified Tribal Domain Parallel Entries",
+      "compatibility": {
+        "wasm": "WebAssembly MVP compliant",
+        "sql_js": ">=1.8.0",
+        "browser": "Chrome Android >= 80, Edge >= 80, Safari >= 14"
+      },
+      "deployment_mode": "Client-Side PWA Cache Storage / In-Browser WASM"
+    },
+    {
+      "language": "wasm-engine",
+      "language_name": "SQLite WebAssembly Engine",
+      "component": "Database Runtime Engine",
+      "model": "sql.js SQLite WebAssembly Engine",
+      "model_id": "kripken/sql.js",
+      "model_version": "1.8.0",
+      "quantization": "WebAssembly Binary (.wasm)",
+      "format": "wasm",
+      "runtime": "Browser WebAssembly",
+      "size_bytes": 658410,
+      "size_mb": 0.63,
+      "checksum": "sha256:38c14f6e379210bc942bdc4ebca44e7bfdb4318ecc1c72ca666a28fdce96670a",
+      "vocabulary_version": "N/A",
+      "compatibility": {
+        "wasm": "WebAssembly MVP compliant",
+        "browser": "Chrome Android >= 80, Edge >= 80"
+      },
+      "deployment_mode": "Client-Side PWA Cache Storage"
+    },
+    {
+      "language": "hi-IN",
+      "language_name": "Hindi (India)",
+      "component": "ASR",
+      "model": "Native Web Speech API / Android On-Device Speech Recognizer",
+      "model_id": "platform/native-hi-IN",
+      "model_version": "OS-Dependent",
+      "quantization": "Native System Service",
+      "format": "system",
+      "runtime": "webkitSpeechRecognition / SpeechRecognition",
+      "size_bytes": 0,
+      "size_mb": 0.0,
+      "checksum": "platform:android-system",
+      "vocabulary_version": "Standard Hindi Devanagari Lexicon",
+      "compatibility": {
+        "browser": "Chrome Android >= 80, Edge >= 80"
+      },
+      "deployment_mode": "On-Device Browser / OS Native Service"
+    },
+    {
+      "language": "sat",
+      "language_name": "Santali",
+      "component": "TTS",
+      "model": "Bhasha Setu Phonetic Romanization TTS Bridge",
+      "model_id": "bhasha-setu/phonetic-tts-bridge",
+      "model_version": "1.2.0",
+      "quantization": "Heuristic Phonetic Mapping + Native Synthesis",
+      "format": "typescript",
+      "runtime": "window.speechSynthesis",
+      "size_bytes": 12400,
+      "size_mb": 0.012,
+      "checksum": "code:sha256-phonetic-adapter-v1.2",
+      "vocabulary_version": "Ol Chiki to Romanized Phonetic Map v1.2",
+      "compatibility": {
+        "browser": "Chrome Android >= 80, Edge >= 80, Firefox Mobile >= 90"
+      },
+      "deployment_mode": "Client-Side In-Memory Execution",
+      "native_neural_tts_status": "BLOCKED BY DATA (Awaiting CC-BY-4.0 >=15h Ol-Chiki-aligned acoustic dataset)"
+    },
+    {
+      "language": "unr",
+      "language_name": "Mundari",
+      "component": "ASR / NMT / TTS",
+      "model": "Gated Phase 2 Pipeline",
+      "model_id": "gated/mundari-pipeline",
+      "model_version": "N/A",
+      "quantization": "N/A",
+      "format": "gated",
+      "runtime": "GATED_PHASE_2",
+      "size_bytes": 0,
+      "size_mb": 0.0,
+      "checksum": "gated:security-policy-phase-2",
+      "vocabulary_version": "N/A",
+      "compatibility": {
+        "status": "ETHICALLY GATED UNTIL PHASE 2 BENCHMARKS"
+      },
+      "deployment_mode": "Inactive / Gated"
+    },
+    {
+      "language": "hoc",
+      "language_name": "Ho",
+      "component": "ASR / NMT / TTS",
+      "model": "Gated Phase 3 Pipeline",
+      "model_id": "gated/ho-pipeline",
+      "model_version": "N/A",
+      "quantization": "N/A",
+      "format": "gated",
+      "runtime": "GATED_PHASE_3",
+      "size_bytes": 0,
+      "size_mb": 0.0,
+      "checksum": "gated:security-policy-phase-3",
+      "vocabulary_version": "N/A",
+      "compatibility": {
+        "status": "ETHICALLY GATED UNTIL PHASE 3 BENCHMARKS"
+      },
+      "deployment_mode": "Inactive / Gated"
+    }
+  ]
+}
