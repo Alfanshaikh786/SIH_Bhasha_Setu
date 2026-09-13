@@ -178,6 +178,7 @@ export const SpeechToSpeechPage: React.FC = () => {
       },
       onError: (err) => {
         console.warn('[S2S Controller notice]:', err.message);
+        setStatusMessage(`Speech/Microphone notice: ${err.message}`);
         setActiveSpeaker(null);
         setLiveTranscript('');
       }
@@ -240,8 +241,6 @@ export const SpeechToSpeechPage: React.FC = () => {
   };
 
   const handleStopListening = () => {
-    // ✅ FIX: Immediately clear activeSpeaker so the button turns blue instantly
-    // before the controller finishes processing (translation + TTS).
     setActiveSpeaker(null);
     setLiveTranscript('');
     setStatusMessage(null);

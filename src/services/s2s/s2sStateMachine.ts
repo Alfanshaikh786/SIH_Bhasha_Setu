@@ -43,20 +43,20 @@ export class S2SStateMachine {
 
   // Maximum allowed duration in milliseconds for transient processing states
   private static readonly STATE_TIMEOUTS: Partial<Record<S2SState, number>> = {
-    LISTENING: 35000,         // Max 35s continuous single-turn speech
+    LISTENING: 30000,         // Max 30s continuous single-turn speech
     PROCESSING_AUDIO: 8000,   // Max 8s audio buffer conversion / VAD
-    ASR_PROCESSING: 12000,    // Max 12s ASR network / inference
-    TRANSLATING: 10000,       // Max 10s translation lookup / fallback
+    ASR_PROCESSING: 10000,    // Max 10s ASR network / inference
+    TRANSLATING: 8000,        // Max 8s translation lookup / fallback
     SAFETY_CHECK: 3000,       // Max 3s domain risk analysis
     TTS_PROCESSING: 5000,     // Max 5s voice synth initialization
-    PLAYING: 45000            // Max 45s audio utterance playback
+    PLAYING: 15000            // Max 15s audio utterance playback
   };
 
   // Valid deterministic state transitions
   private static readonly ALLOWED_TRANSITIONS: Record<S2SState, S2SState[]> = {
     IDLE: ['LISTENING', 'ERROR'],
-    LISTENING: ['PROCESSING_AUDIO', 'ASR_PROCESSING', 'CANCELLED', 'ERROR', 'IDLE'],
-    PROCESSING_AUDIO: ['ASR_PROCESSING', 'CANCELLED', 'ERROR', 'IDLE'],
+    LISTENING: ['PROCESSING_AUDIO', 'ASR_PROCESSING', 'TRANSLATING', 'CANCELLED', 'ERROR', 'IDLE'],
+    PROCESSING_AUDIO: ['ASR_PROCESSING', 'TRANSLATING', 'CANCELLED', 'ERROR', 'IDLE'],
     ASR_PROCESSING: ['TRANSLATING', 'CANCELLED', 'ERROR', 'IDLE'],
     TRANSLATING: ['SAFETY_CHECK', 'CANCELLED', 'ERROR', 'IDLE'],
     SAFETY_CHECK: ['TTS_PROCESSING', 'PLAYING', 'CANCELLED', 'ERROR', 'IDLE'],

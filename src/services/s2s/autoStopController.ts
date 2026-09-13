@@ -12,9 +12,18 @@
  * - Structured privacy-first telemetry tracking (no raw audio or private transcripts)
  */
 
-export const AUTO_STOP_SILENCE_MS = 7000;
+export const AUTO_STOP_SILENCE_MS = 2000;
 export const INITIAL_SILENCE_TIMEOUT_MS = 10000;
 export const MIN_SPEECH_DURATION_MS = 300;
+
+export const isS2SDebug = (): boolean =>
+  typeof window !== 'undefined' && Boolean((window as any).S2S_DEBUG);
+
+export const s2sDebugLog = (turnId: string | undefined, msg: string, ...extra: any[]): void => {
+  if (isS2SDebug()) {
+    console.log(`[S2S] turn=${turnId || 'none'} ${msg}`, ...extra);
+  }
+};
 
 export type AutoStopTelemetryAction =
   | 'MIC_STARTED'
@@ -83,6 +92,7 @@ export class S2SAutoStopController {
     this.isStoppingMutex = false;
 
     this.recordTelemetry('MIC_STARTED', turnId, 0, 'Microphone capture initiated');
+    s2sDebugLog(turnId, 'MIC_STARTED - monitoring active');
 
     // Safety fallback: if user never vocalizes after initial timeout, auto-stop to protect battery/privacy
     this.initialSilenceTimer = setTimeout(() => {
@@ -111,6 +121,7 @@ export class S2SAutoStopController {
         this.speechStartTimestamp = now;
         this.speechHasStarted = true;
         this.recordTelemetry('SPEECH_DETECTED', this.activeTurnId, 0, `Speech vocalization started (RMS: ${rms.toFixed(4)})`);
+        s2sDebugLog(this.activeTurnId, `SPEECH_DETECTED RMS=${rms.toFixed(4)}`);
       }
 
       // If a silence countdown was running from a conversational pause, RESET IT IMMEDIATELY
@@ -118,6 +129,7 @@ export class S2SAutoStopController {
         clearTimeout(this.silenceTimer);
         this.silenceTimer = null;
         this.recordTelemetry('SILENCE_TIMER_RESET', this.activeTurnId, 0, 'Speech resumed: continuous silence timer reset to 0');
+        s2sDebugLog(this.activeTurnId, 'SILENCE_TIMER_RESET speech resumed');
       }
     } else {
       // 2. User is silent in this frame
@@ -126,11 +138,13 @@ export class S2SAutoStopController {
         this.speechCurrentlyActive = false;
         this.lastSpeechEndTimestamp = now;
         this.recordTelemetry('SPEECH_ENDED', this.activeTurnId, 0, 'Speech vocalization paused or ended');
+        s2sDebugLog(this.activeTurnId, 'SPEECH_ENDED silence begins');
       }
 
       // If user has vocalized in this turn and no silence timer is currently running, START COUNTDOWN
       if (this.speechHasStarted && !this.silenceTimer && !this.hasStopped) {
         this.recordTelemetry('SILENCE_TIMER_STARTED', this.activeTurnId, this.autoStopSilenceMs, `Continuous silence countdown started (${this.autoStopSilenceMs}ms threshold)`);
+        s2sDebugLog(this.activeTurnId, `SILENCE_TIMER_STARTED threshold=${this.autoStopSilenceMs}ms`);
         
         const scheduledTurnId = this.activeTurnId;
         this.silenceTimer = setTimeout(() => {
@@ -189,6 +203,7 @@ export class S2SAutoStopController {
     this.clearTimers();
 
     this.recordTelemetry('MIC_AUTO_STOPPED', turnId, this.autoStopSilenceMs, details);
+    s2sDebugLog(turnId, `AUTO_STOP triggered: reason=${reason}, details=${details}`);
 
     try {
       this.options.onAutoStop?.(reason, turnId);
