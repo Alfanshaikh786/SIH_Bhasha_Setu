@@ -44,6 +44,9 @@ class SantaliIndicConformerASREngine(ASREngine):
     def supported_languages(self) -> List[str]:
         return ["sat", "santali"]
 
+    def ensure_loaded(self) -> None:
+        self._ensure_loaded()
+
     def _ensure_loaded(self):
         if self._model is None:
             self._model = get_santali_model()
@@ -52,7 +55,8 @@ class SantaliIndicConformerASREngine(ASREngine):
         self,
         audio_data: np.ndarray,
         sample_rate: int = TARGET_SAMPLE_RATE,
-        language: str = "sat"
+        language: str = "sat",
+        **kwargs
     ) -> ASRResult:
         """
         Transcribes a 1D float32 audio waveform into native Ol Chiki text with

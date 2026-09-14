@@ -21,8 +21,8 @@ class ASRRouter:
         # Register Santali Neural Engine (IndicConformer)
         self.register_engine("sat", SantaliIndicConformerASREngine())
 
-        # Register Hindi / English / Auto Engine (Faster-Whisper)
-        whisper_engine = WhisperASREngine(model_size="tiny", device="cpu", compute_type="int8")
+        # Register Hindi / English / Auto Engine (Faster-Whisper Base)
+        whisper_engine = WhisperASREngine(model_size="base", device="cpu", compute_type="int8")
         self.register_engine("hin", whisper_engine)
         self.register_engine("hi", whisper_engine)
         self.register_engine("eng", whisper_engine)
@@ -42,7 +42,8 @@ class ASRRouter:
         self,
         audio_data: np.ndarray,
         sample_rate: int = 16000,
-        language: str = "sat"
+        language: str = "sat",
+        **kwargs
     ) -> ASRResult:
         lang = language.lower()
 
@@ -87,7 +88,11 @@ class ASRRouter:
                 error_message=f"No neural ASR engine registered for language '{lang}'."
             )
 
-        return engine.transcribe(audio_data, sample_rate=sample_rate, language=lang)
+        # Forward kwargs if the engine accepts them (e.g. beam_size for Whisper)
+        try:
+            return engine.transcribe(audio_data, sample_rate=sample_rate, language=lang, **kwargs)
+        except TypeError:
+            return engine.transcribe(audio_data, sample_rate=sample_rate, language=lang)
 
 
 # Global singleton router

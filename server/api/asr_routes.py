@@ -1,17 +1,16 @@
 """
-FastAPI REST & WebSocket Endpoints for Neural ASR (Santali IndicConformer)
+FastAPI REST & WebSocket Endpoints for Neural ASR (Santali IndicConformer + Faster-Whisper)
 """
 
-import io
 import json
 import time
-from typing import Optional
+import asyncio
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 import numpy as np
 
 from server.asr.router import asr_router
-from server.audio.preprocessing import preprocess_audio_pipeline, load_audio_from_bytes, TARGET_SAMPLE_RATE
+from server.audio.preprocessing import preprocess_audio_pipeline, resample_audio, TARGET_SAMPLE_RATE
 
 
 router = APIRouter()
@@ -39,9 +38,9 @@ def get_asr_status():
     return ASRStatusResponse(
         status="ready" if engine else "error",
         active_engine=engine_name,
-        supported_languages=["sat"],
-        model_name="ai4bharat/indicconformer_stt_sat_hybrid_ctc_rnnt_large (ONNX int8)",
-        script="Ol Chiki (U+1C50–U+1C7F)",
+        supported_languages=["sat", "hin", "hi", "eng", "en"],
+        model_name="ai4bharat/indicconformer_stt_sat_hybrid_ctc_rnnt_large (ONNX int8) + Faster-Whisper",
+        script="Ol Chiki (U+1C50\u2013U+1C7F) / Devanagari",
         sample_rate=16000,
         offline_capable=True,
         device="CPU / ONNX Runtime"
@@ -56,10 +55,8 @@ async def transcribe_audio(
 ):
     """
     Receives an audio file (WAV, MP3, OGG, M4A, etc.), runs preprocessing,
-    VAD segmentation, and neural Santali IndicConformer transcription.
+    VAD segmentation, and neural Santali IndicConformer / Faster-Whisper transcription.
     """
-    start_time = time.perf_counter()
-
     # Phase 1 Scope Check: explicitly reject Mundari and Ho
     if source_lang.lower() in ["unr", "mundari"]:
         raise HTTPException(
@@ -81,7 +78,7 @@ async def transcribe_audio(
         audio_array, duration_sec = preprocess_audio_pipeline(audio_bytes)
 
         if duration_sec < 0.2:
-            engine = asr_router.get_engine("sat")
+            engine = asr_router.get_engine(source_lang) or asr_router.get_engine("sat")
             return {
                 "text": "",
                 "language": source_lang,
@@ -99,10 +96,8 @@ async def transcribe_audio(
         # Transcribe via neural engine
         asr_res = asr_router.transcribe(audio_array, sample_rate=TARGET_SAMPLE_RATE, language=source_lang)
 
-        # Convert dataclasses to dict
-        segments_payload = []
-        for s in asr_res.segments:
-            segments_payload.append({
+        segments_payload = [
+            {
                 "id": s.id,
                 "start_sec": s.start_sec,
                 "end_sec": s.end_sec,
@@ -110,7 +105,9 @@ async def transcribe_audio(
                 "speaker": s.speaker,
                 "asr_confidence": s.asr_confidence,
                 "needs_review": s.needs_review
-            })
+            }
+            for s in asr_res.segments
+        ]
 
         return {
             "text": asr_res.text,
@@ -139,50 +136,110 @@ async def transcribe_audio(
 async def websocket_asr_stream(websocket: WebSocket):
     """
     WebSocket endpoint for real-time microphone audio chunk streaming.
-    Accepts raw PCM or WebM chunks and emits interim and finalized transcripts.
-    Hardened with connection safety, max buffer cap, and graceful disconnect cleanup.
+
+    DUAL-BUFFER ARCHITECTURE (fixes the "Good morning, good morning" duplication bug):
+
+    - finalize_buffer: Accumulates ALL speech-only PCM sent by the client.
+      The frontend (audioPipeline.ts) now sends ONLY frames where VAD detects active
+      speech, so this buffer contains a clean utterance recording with no silence padding.
+      Used exclusively for the final, authoritative ASR transcription call.
+
+    - interim_ring: A rolling ring of the LAST 3 seconds of audio.
+      Interim calls are preview-only and do NOT share data with finalize_buffer.
+      Their output is never shown in the conversation history — only in the live
+      interim text display.
+
+    Root cause of old bug: the previous single audio_buffer was sliced for both interim
+    AND final calls, so the same speech tokens appeared multiple times in the transcript.
+    The interim ring is now SEPARATE and DISPOSABLE.
     """
     await websocket.accept()
-    audio_buffer = bytearray()
+
+    # finalize_buffer: used only for the final ASR call at turn end
+    finalize_buffer = bytearray()
+
+    # interim_ring: rolling 3-second window for live preview only
+    INTERIM_RING_BYTES = TARGET_SAMPLE_RATE * 2 * 3  # 3s × 16kHz × 2 bytes/sample
+    interim_ring = bytearray()
+
     last_interim_time = 0.0
-    engine = asr_router.get_engine("sat")
+    lang = websocket.query_params.get("lang", "sat").lower()
+    client_sr = int(websocket.query_params.get("sample_rate", TARGET_SAMPLE_RATE))
+    current_turn_id = websocket.query_params.get("turnId") or websocket.query_params.get("turn_id")
+
+    engine = asr_router.get_engine(lang) or asr_router.get_engine("sat")
     if engine is None:
-        await websocket.close(code=1011, reason="Santali ASR engine unavailable")
+        await websocket.close(code=1011, reason=f"ASR engine for '{lang}' unavailable")
         return
 
-    MAX_BUFFER_BYTES = 16000 * 2 * 120  # 120 seconds max buffer limit (3.84 MB)
+    # Hard cap: 120 seconds of 16 kHz int16 audio = 3.84 MB
+    MAX_FINALIZE_BYTES = TARGET_SAMPLE_RATE * 2 * 120
+    # Minimum 100ms of speech needed for a meaningful transcription
+    MIN_FINALIZE_BYTES = TARGET_SAMPLE_RATE * 2 // 10
+    # Minimum 300ms audio required before first interim hypothesis
+    MIN_INTERIM_BYTES = int(TARGET_SAMPLE_RATE * 2 * 0.3)
+
+    is_interim_in_flight = False
+    is_finalized = False
+    active_interim_task = None
+
+    async def run_interim_inference(audio_snapshot: bytes, turn_id: str):
+        nonlocal is_interim_in_flight
+        try:
+            interim_np = np.frombuffer(audio_snapshot, dtype=np.int16).astype(np.float32) / 32768.0
+            if client_sr != TARGET_SAMPLE_RATE and len(interim_np) > 0:
+                interim_np = resample_audio(interim_np, orig_sr=client_sr, target_sr=TARGET_SAMPLE_RATE)
+            if len(interim_np) > 0:
+                # Use beam_size=1 for interim preview (ultra-low CPU latency, typing-like live updates)
+                res = await asyncio.to_thread(
+                    engine.transcribe, interim_np,
+                    sample_rate=TARGET_SAMPLE_RATE, language=lang, beam_size=1
+                )
+                if res.text and not is_finalized:
+                    await websocket.send_json({
+                        "type": "interim",
+                        "turnId": turn_id,
+                        "text": res.text,
+                        "is_final": False
+                    })
+        except Exception:
+            pass  # Interim failures are silent — finalize is authoritative
+        finally:
+            is_interim_in_flight = False
 
     try:
         while True:
             message = await websocket.receive()
+
             if "bytes" in message and message["bytes"]:
                 chunk = message["bytes"]
-                if len(audio_buffer) + len(chunk) <= MAX_BUFFER_BYTES:
-                    audio_buffer.extend(chunk)
-                else:
-                    # Buffer overflow guard: slide buffer keeping the most recent 60 seconds
-                    overflow = (len(audio_buffer) + len(chunk)) - MAX_BUFFER_BYTES
-                    del audio_buffer[:overflow]
-                    audio_buffer.extend(chunk)
+                is_finalized = False
 
+                # ── finalize_buffer: accumulate speech (capped at 120s) ──────────────
+                if len(finalize_buffer) + len(chunk) <= MAX_FINALIZE_BYTES:
+                    finalize_buffer.extend(chunk)
+                else:
+                    excess = len(finalize_buffer) + len(chunk) - MAX_FINALIZE_BYTES
+                    del finalize_buffer[:excess]
+                    finalize_buffer.extend(chunk)
+
+                # ── interim_ring: rolling 3-second ring for preview only ─────────────
+                interim_ring.extend(chunk)
+                if len(interim_ring) > INTERIM_RING_BYTES:
+                    del interim_ring[:len(interim_ring) - INTERIM_RING_BYTES]
+
+                # ── Emit interim hypothesis asynchronously without blocking receive loop ─
                 now = time.perf_counter()
-                # Process interim hypotheses at most once every 0.6s when at least 0.5s audio is buffered
-                if len(audio_buffer) >= 16000 and (now - last_interim_time) >= 0.6:
+                if (
+                    not is_interim_in_flight
+                    and len(interim_ring) >= MIN_INTERIM_BYTES
+                    and (now - last_interim_time) >= 0.35
+                ):
                     last_interim_time = now
-                    try:
-                        # Use latest 3.0 seconds for responsive interim hypothesis
-                        interim_slice = audio_buffer[-96000:] if len(audio_buffer) > 96000 else audio_buffer
-                        raw_np = np.frombuffer(interim_slice, dtype=np.int16).astype(np.float32) / 32768.0
-                        if np.max(np.abs(raw_np)) > 0.015:
-                            res = engine.transcribe(raw_np, sample_rate=16000, language="sat")
-                            if res.text:
-                                await websocket.send_json({
-                                    "type": "interim",
-                                    "text": res.text,
-                                    "is_final": False
-                                })
-                    except Exception:
-                        pass
+                    is_interim_in_flight = True
+                    active_interim_task = asyncio.create_task(
+                        run_interim_inference(bytes(interim_ring), current_turn_id)
+                    )
 
             elif "text" in message:
                 try:
@@ -190,17 +247,36 @@ async def websocket_asr_stream(websocket: WebSocket):
                 except Exception:
                     data = {}
 
-                if data.get("action") == "finalize":
-                    if len(audio_buffer) > 3200:  # at least 100ms
+                action = data.get("action")
+
+                if action == "finalize":
+                    is_finalized = True
+                    turn_id = data.get("turnId") or current_turn_id
+
+                    # Cancel any active background interim task
+                    if active_interim_task and not active_interim_task.done():
+                        active_interim_task.cancel()
+
+                    if len(finalize_buffer) > MIN_FINALIZE_BYTES:
                         try:
-                            raw_np = np.frombuffer(audio_buffer, dtype=np.int16).astype(np.float32) / 32768.0
-                            res = engine.transcribe(raw_np, sample_rate=16000, language="sat")
+                            final_np = np.frombuffer(bytes(finalize_buffer), dtype=np.int16).astype(np.float32) / 32768.0
+                            if client_sr != TARGET_SAMPLE_RATE and len(final_np) > 0:
+                                final_np = resample_audio(final_np, orig_sr=client_sr, target_sr=TARGET_SAMPLE_RATE)
+
+                            # Offload to thread pool with full beam_size=5 for authoritative final transcript
+                            res = await asyncio.to_thread(
+                                engine.transcribe, final_np,
+                                sample_rate=TARGET_SAMPLE_RATE, language=lang, beam_size=5
+                            )
                             await websocket.send_json({
                                 "type": "final",
+                                "turnId": turn_id,
                                 "text": res.text,
+                                "language": res.language,
                                 "duration_sec": res.duration_sec,
                                 "processing_time_ms": res.processing_time_ms,
                                 "real_time_factor": res.real_time_factor,
+                                "asr_confidence": res.asr_confidence,
                                 "segments": [
                                     {
                                         "id": s.id,
@@ -217,22 +293,38 @@ async def websocket_asr_stream(websocket: WebSocket):
                         except Exception as e:
                             await websocket.send_json({
                                 "type": "error",
+                                "turnId": turn_id,
                                 "message": f"Finalization error: {str(e)}"
                             })
                     else:
+                        # No usable audio — return empty final so the turn can complete cleanly
                         await websocket.send_json({
                             "type": "final",
+                            "turnId": turn_id,
                             "text": "",
+                            "language": lang,
                             "duration_sec": 0.0,
                             "processing_time_ms": 0.0,
                             "real_time_factor": 0.0,
+                            "asr_confidence": 0.0,
                             "segments": [],
                             "is_final": True
                         })
-                    audio_buffer.clear()
 
-                elif data.get("action") == "reset":
-                    audio_buffer.clear()
+                    # Always clear both buffers after finalization so the next turn starts clean
+                    finalize_buffer.clear()
+                    interim_ring.clear()
+                    last_interim_time = 0.0
+                    is_interim_in_flight = False
+
+                elif action == "reset":
+                    is_finalized = True
+                    if active_interim_task and not active_interim_task.done():
+                        active_interim_task.cancel()
+                    finalize_buffer.clear()
+                    interim_ring.clear()
+                    last_interim_time = 0.0
+                    is_interim_in_flight = False
 
     except WebSocketDisconnect:
         pass
@@ -244,4 +336,5 @@ async def websocket_asr_stream(websocket: WebSocket):
         except Exception:
             pass
     finally:
-        audio_buffer.clear()
+        finalize_buffer.clear()
+        interim_ring.clear()

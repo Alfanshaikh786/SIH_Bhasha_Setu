@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Download, Smartphone, X, Check, Share, Monitor, Globe, Sparkles, HelpCircle } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -7,11 +8,17 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export const PWAInstallPrompt: React.FC = () => {
+  const location = useLocation();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showFloatingBadge, setShowFloatingBadge] = useState(true);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [activeDeviceTab, setActiveDeviceTab] = useState<'desktop' | 'android' | 'ios'>('desktop');
+
+  // Suppress PWA install badge on Video Subtitle page to prevent covering controls
+  if (location.pathname.startsWith('/features/video-subtitle')) {
+    return null;
+  }
 
   useEffect(() => {
     // Detect if already installed / running in standalone mode

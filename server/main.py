@@ -254,10 +254,14 @@ def search_sentences(
     finally:
         p.putconn(conn)
 
+# In-memory translation cache in front of PostgreSQL (Phase 11)
+_translation_memory_cache = {}
+
 @app.post("/api/translate")
 def translate_text(req: TranslateRequest):
     """
     Direct SQL parallel query for exact or fuzzy match across all 5 supported languages.
+    Fronted by in-memory cache for sub-millisecond repeated lookups.
     """
     clean_text = req.text.strip()
     if not clean_text:
@@ -266,6 +270,10 @@ def translate_text(req: TranslateRequest):
     src_lang_id = LANG_MAP.get(req.source_lang.lower(), 1)
     target_lang_id = LANG_MAP.get(req.target_lang.lower(), 3)
     lower = clean_text.lower().replace('?', '').replace('!', '').replace('.', '').replace(',', '').strip()
+
+    cache_key = f"{src_lang_id}:{target_lang_id}:{lower}"
+    if cache_key in _translation_memory_cache:
+        return _translation_memory_cache[cache_key]
 
     p = get_db_pool()
     conn = p.getconn()
@@ -314,12 +322,15 @@ def translate_text(req: TranslateRequest):
                 "mundari": row[6], "category": row[7], "verified": row[8]
             }
             cur.close()
-            return {
+            res = {
                 "target_text": target_text,
                 "roman": roman,
                 "confidence": 0.99,
                 "row": res_row
             }
+            if len(_translation_memory_cache) < 5000:
+                _translation_memory_cache[cache_key] = res
+            return res
 
         # 2. Fuzzy LIKE Match
         fuzzy_query = """
@@ -363,12 +374,15 @@ def translate_text(req: TranslateRequest):
                 "mundari": row[6], "category": row[7], "verified": row[8]
             }
             cur.close()
-            return {
+            res = {
                 "target_text": target_text,
                 "roman": roman,
                 "confidence": 0.95,
                 "row": res_row
             }
+            if len(_translation_memory_cache) < 5000:
+                _translation_memory_cache[cache_key] = res
+            return res
 
         cur.close()
         return {"target_text": None, "roman": None, "confidence": 0, "row": None}

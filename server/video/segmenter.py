@@ -113,9 +113,11 @@ def segment_subtitles(
                             end_sec=cur_end,
                             source_text=s,
                             translated_text=wrapped,
+                            romanized_text=cue.romanized_text,
                             speaker=cue.speaker,
                             confidence=cue.confidence,
-                            translation_source=cue.translation_source
+                            translation_source=cue.translation_source,
+                            domain=cue.domain
                         )
                     )
                     cur_start = cur_end

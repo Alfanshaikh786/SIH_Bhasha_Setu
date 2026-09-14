@@ -55,12 +55,17 @@ class ASREngine(ABC):
         """Returns ISO codes of supported languages."""
         pass
 
+    def ensure_loaded(self) -> None:
+        """Eagerly loads model weights into memory if not already loaded."""
+        pass
+
     @abstractmethod
     def transcribe(
         self,
         audio_data: np.ndarray,
         sample_rate: int = 16000,
-        language: str = "sat"
+        language: str = "sat",
+        **kwargs
     ) -> ASRResult:
         """
         Transcribes a 1D float32 numpy array sampled at sample_rate.

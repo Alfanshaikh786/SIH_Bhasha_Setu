@@ -3,7 +3,7 @@ SRT and WebVTT Formatters for Subtitle Generation
 Generates compliant, standard subtitle strings with full UTF-8 and Ol Chiki support.
 """
 
-from typing import List
+from typing import List, Any
 from server.video.timeline import SubtitleCue
 
 
@@ -37,19 +37,24 @@ def format_seconds_to_vtt_time(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d}.{ms:03d}"
 
 
-def generate_srt(cues: List[SubtitleCue]) -> str:
+def generate_srt(cues: List[Any]) -> str:
     """
-    Generates standard SubRip (.srt) subtitle string.
+    Generates standard SubRip (.srt) subtitle string. Supports SubtitleCue objects or dicts.
     """
     lines = []
     for cue in cues:
-        text = (cue.translated_text or cue.source_text).strip()
+        start_sec = getattr(cue, "start_sec", None) if hasattr(cue, "start_sec") else cue.get("start_sec", 0.0)
+        end_sec = getattr(cue, "end_sec", None) if hasattr(cue, "end_sec") else cue.get("end_sec", 0.0)
+        idx = getattr(cue, "index", None) if hasattr(cue, "index") else cue.get("index", 1)
+        trans = getattr(cue, "translated_text", "") if hasattr(cue, "translated_text") else cue.get("translated_text", "")
+        src = getattr(cue, "source_text", "") if hasattr(cue, "source_text") else cue.get("source_text", "")
+        text = (trans or src).strip()
         if not text:
             continue
-        start_ts = format_seconds_to_srt_time(cue.start_sec)
-        end_ts = format_seconds_to_srt_time(cue.end_sec)
+        start_ts = format_seconds_to_srt_time(float(start_sec or 0.0))
+        end_ts = format_seconds_to_srt_time(float(end_sec or 0.0))
 
-        lines.append(str(cue.index))
+        lines.append(str(idx))
         lines.append(f"{start_ts} --> {end_ts}")
         lines.append(text)
         lines.append("")  # Empty line separator
@@ -57,19 +62,24 @@ def generate_srt(cues: List[SubtitleCue]) -> str:
     return "\n".join(lines).strip() + "\n"
 
 
-def generate_vtt(cues: List[SubtitleCue]) -> str:
+def generate_vtt(cues: List[Any]) -> str:
     """
-    Generates standard WebVTT (.vtt) subtitle string.
+    Generates standard WebVTT (.vtt) subtitle string. Supports SubtitleCue objects or dicts.
     """
     lines = ["WEBVTT", ""]
     for cue in cues:
-        text = (cue.translated_text or cue.source_text).strip()
+        start_sec = getattr(cue, "start_sec", None) if hasattr(cue, "start_sec") else cue.get("start_sec", 0.0)
+        end_sec = getattr(cue, "end_sec", None) if hasattr(cue, "end_sec") else cue.get("end_sec", 0.0)
+        idx = getattr(cue, "index", None) if hasattr(cue, "index") else cue.get("index", 1)
+        trans = getattr(cue, "translated_text", "") if hasattr(cue, "translated_text") else cue.get("translated_text", "")
+        src = getattr(cue, "source_text", "") if hasattr(cue, "source_text") else cue.get("source_text", "")
+        text = (trans or src).strip()
         if not text:
             continue
-        start_ts = format_seconds_to_vtt_time(cue.start_sec)
-        end_ts = format_seconds_to_vtt_time(cue.end_sec)
+        start_ts = format_seconds_to_vtt_time(float(start_sec or 0.0))
+        end_ts = format_seconds_to_vtt_time(float(end_sec or 0.0))
 
-        lines.append(str(cue.index))
+        lines.append(str(idx))
         lines.append(f"{start_ts} --> {end_ts}")
         lines.append(text)
         lines.append("")  # Empty line separator

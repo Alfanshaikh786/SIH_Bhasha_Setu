@@ -16,7 +16,7 @@ class WhisperASREngine(ASREngine):
     Optimized for CPU inference with int8 quantization.
     """
 
-    def __init__(self, model_size: str = "tiny", device: str = "cpu", compute_type: str = "int8"):
+    def __init__(self, model_size: str = "base", device: str = "cpu", compute_type: str = "int8"):
         self._model_size = model_size
         self._device = device
         self._compute_type = compute_type
@@ -30,6 +30,9 @@ class WhisperASREngine(ASREngine):
     @property
     def supported_languages(self) -> List[str]:
         return self._languages
+
+    def ensure_loaded(self) -> None:
+        self._ensure_loaded()
 
     def _ensure_loaded(self):
         if self._model is None:
@@ -45,7 +48,9 @@ class WhisperASREngine(ASREngine):
         self,
         audio_data: np.ndarray,
         sample_rate: int = 16000,
-        language: str = "auto"
+        language: str = "auto",
+        beam_size: int = 5,
+        **kwargs
     ) -> ASRResult:
         start_time = time.perf_counter()
         duration_sec = len(audio_data) / float(sample_rate) if sample_rate > 0 else 0.0
@@ -65,13 +70,16 @@ class WhisperASREngine(ASREngine):
 
         self._ensure_loaded()
 
-        # Map language code
+        # Map language code and configure script guidance
         whisper_lang = None
+        initial_prompt = None
         lang_lower = language.lower()
         if lang_lower in ["hin", "hi", "hindi"]:
             whisper_lang = "hi"
+            initial_prompt = "नमस्ते, यह बातचीत हिन्दी भाषा में है।"
         elif lang_lower in ["eng", "en", "english"]:
             whisper_lang = "en"
+            initial_prompt = None
         elif lang_lower in ["auto", "detect"]:
             whisper_lang = None
 
@@ -82,13 +90,20 @@ class WhisperASREngine(ASREngine):
         if self._model is None:
             raise RuntimeError("Whisper model failed to load.")
 
-        # Transcribe
+        # Transcribe strictly with task="transcribe" and condition_on_previous_text=False
+        # repetition_penalty=1.2 prevents loop hallucinations (e.g. "Hello, Hello, Hello...")
+        # vad_filter=False ensures short words (e.g. 0.8s) are never dropped
         segments_gen, info = self._model.transcribe(
             audio_data,
             language=whisper_lang,
-            beam_size=2,
-            vad_filter=True,
-            vad_parameters=dict(min_silence_duration_ms=400)
+            task="transcribe",
+            initial_prompt=initial_prompt,
+            condition_on_previous_text=False,
+            temperature=0.0,
+            beam_size=beam_size,
+            repetition_penalty=1.2,
+            no_repeat_ngram_size=3,
+            vad_filter=False
         )
 
         segments: List[ASRSegment] = []

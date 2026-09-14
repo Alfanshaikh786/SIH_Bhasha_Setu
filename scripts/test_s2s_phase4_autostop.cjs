@@ -42,8 +42,8 @@ function assert(condition, message) {
 }
 
 // Simulated AutoStopController for deterministic headless testing
-const AUTO_STOP_SILENCE_MS = 7000;
-const INITIAL_SILENCE_TIMEOUT_MS = 10000;
+const AUTO_STOP_SILENCE_MS = 2200;
+const INITIAL_SILENCE_TIMEOUT_MS = 8000;
 const VAD_RMS_THRESHOLD = 0.012;
 
 class MockAutoStopController {

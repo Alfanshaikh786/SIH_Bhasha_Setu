@@ -57,8 +57,9 @@ interface TranscribeSegment {
 
 export const SpeechToTextPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'mic' | 'upload'>('mic');
-  const [sourceLang, setSourceLang] = useState('sat'); // Default: Santali
-  const [targetLang, setTargetLang] = useState('eng'); // Translation language
+  const [sourceLang, setSourceLang] = useState('eng'); // Default: English (can change to Hindi, Santali, etc.)
+  const [targetLang, setTargetLang] = useState('sat'); // Translation language (Default: Santali)
+  const [autoSpeak, setAutoSpeak] = useState(false); // Auto-speak translated output
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [interimText, setInterimText] = useState('');
@@ -84,6 +85,9 @@ export const SpeechToTextPage: React.FC = () => {
   const streamerRef = useRef<MicrophoneStreamer | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioMonitorRef = useRef<AudioQualityMonitor | null>(null);
+  const silenceTimerRef = useRef<any>(null);
+  const isRecordingRef = useRef<boolean>(false);
+  const currentAccumRef = useRef<{ finalChunk: string; latestInterim: string }>({ finalChunk: '', latestInterim: '' });
 
   const sourceLangObj = SUPPORTED_LANGUAGES.find(l => l.code === sourceLang) || SUPPORTED_LANGUAGES[0];
   const targetLangObj = SUPPORTED_LANGUAGES.find(l => l.code === targetLang) || SUPPORTED_LANGUAGES[SUPPORTED_LANGUAGES.length - 1];
@@ -93,9 +97,22 @@ export const SpeechToTextPage: React.FC = () => {
     checkASRStatus().then(status => setAsrStatus(status)).catch(() => {});
   }, []);
 
-  // Cleanup audio monitor on unmount
+  // Cleanup audio monitor and silence timers on unmount
   useEffect(() => {
     return () => {
+      isRecordingRef.current = false;
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch {}
+        recognitionRef.current = null;
+      }
+      if (streamerRef.current) {
+        try { streamerRef.current.stop(); } catch {}
+        streamerRef.current = null;
+      }
       if (audioMonitorRef.current) {
         audioMonitorRef.current.stop();
       }
@@ -159,6 +176,80 @@ export const SpeechToTextPage: React.FC = () => {
     };
   }, [isRecording]);
 
+  // Helper to map UI language codes to Web Speech API acoustic models
+  const getSpeechRecognitionLang = (code: string): string => {
+    const l = code.toLowerCase();
+    if (l === 'eng' || l === 'en') return 'en-IN';
+    if (l === 'hin' || l === 'hi') return 'hi-IN';
+    if (l === 'ben' || l === 'bn') return 'bn-IN';
+    if (l === 'ory' || l === 'or') return 'or-IN';
+    if (l === 'mar' || l === 'mr') return 'mr-IN';
+    if (l === 'guj' || l === 'gu') return 'gu-IN';
+    if (l === 'tam' || l === 'ta') return 'ta-IN';
+    if (l === 'tel' || l === 'te') return 'te-IN';
+    return 'hi-IN';
+  };
+
+  // Commit a finalized utterance into transcripts and trigger translation
+  const commitTranscriptUtterance = async (rawSpoken: string) => {
+    const spoken = rawSpoken.trim();
+    if (!spoken) {
+      setInterimText('');
+      return;
+    }
+
+    setInterimText('');
+    setIsProcessing(true);
+
+    try {
+      let translation = '';
+      let transConf = 0.85;
+      let isLexicon = false;
+
+      if (targetLang !== sourceLang) {
+        try {
+          const tr = await translateText(spoken, sourceLang, targetLang);
+          translation = tr.targetText;
+          transConf = tr.reliability === 'verified' ? 0.98 : tr.reliability === 'dataset' ? 0.92 : 0.85;
+          isLexicon = tr.reliability === 'verified';
+        } catch (e) {
+          console.warn('Translation error in STT:', e);
+        }
+      }
+
+      const curSec = recordingSeconds;
+      const tier: 'verified' | 'dataset' | 'fallback' = isLexicon ? 'verified' : 'dataset';
+
+      const newSegment: TranscribeSegment = {
+        id: `rec-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        time: `${Math.floor(Math.max(0, curSec - 3) / 60).toString().padStart(2, '0')}:${Math.floor(Math.max(0, curSec - 3) % 60).toString().padStart(2, '0')} - ${Math.floor(curSec / 60).toString().padStart(2, '0')}:${Math.floor(curSec % 60).toString().padStart(2, '0')}`,
+        startSec: Math.max(0, curSec - 3),
+        endSec: curSec,
+        speaker: 'Live Speaker',
+        text: spoken,
+        translation: translation || undefined,
+        sourceLang,
+        targetLang,
+        asrConfidence: 0.95,
+        translationConfidence: transConf,
+        lexiconMatch: isLexicon,
+        needsReview: false,
+        confidenceTier: tier
+      };
+
+      setTranscripts(prev => [newSegment, ...prev]);
+
+      if (autoSpeak && translation) {
+        setPlayingSegmentId(`trans-${newSegment.id}`);
+        playTextSpeech(translation, targetLang, 0.9, () => {
+          setPlayingSegmentId(null);
+        });
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // Start Real-time Microphone Speech Recognition
   const handleStartRecording = async () => {
     setErrorMessage(null);
@@ -184,88 +275,32 @@ export const SpeechToTextPage: React.FC = () => {
       console.warn('Audio monitor start error:', e);
     }
 
-    // --- Santali: Use Neural IndicConformer via WebSocket Streamer ---
-    if (sourceLang === 'sat') {
+    // --- Santali with backend available: Use Neural IndicConformer WebSocket ---
+    if (sourceLang === 'sat' && asrStatus?.status === 'ready') {
       try {
         const streamer = new MicrophoneStreamer({
           onInterim: (text: string) => {
             setInterimText(text);
           },
           onFinal: async (seg: ASRSegment) => {
-            setIsProcessing(true);
-            let translation = '';
-            let transConf = 0.85;
-            let isLexicon = false;
-
-            if (targetLang !== 'sat') {
-              try {
-                const tr = await translateText(seg.text, 'sat', targetLang);
-                translation = tr.targetText;
-                transConf = tr.reliability === 'verified' ? 0.98 : tr.reliability === 'dataset' ? 0.92 : 0.85;
-                isLexicon = tr.reliability === 'verified';
-              } catch (e) {
-                console.warn('Translation error:', e);
-              }
-            }
-
-            const isNeedsReview = seg.needs_review || (seg.asr_confidence !== null && seg.asr_confidence !== undefined && seg.asr_confidence < 0.60);
-            const tier = isNeedsReview 
-              ? 'needs_review' 
-              : isLexicon || (seg.asr_confidence && seg.asr_confidence >= 0.85)
-              ? 'verified'
-              : (seg.asr_confidence && seg.asr_confidence >= 0.70)
-              ? 'dataset'
-              : 'fallback';
-
-            const newSeg: TranscribeSegment = {
-              id: seg.id || `mic-${Date.now()}`,
-              time: `${Math.floor(seg.start_sec / 60).toString().padStart(2, '0')}:${Math.floor(seg.start_sec % 60).toString().padStart(2, '0')} - ${Math.floor(seg.end_sec / 60).toString().padStart(2, '0')}:${Math.floor(seg.end_sec % 60).toString().padStart(2, '0')}`,
-              startSec: seg.start_sec,
-              endSec: seg.end_sec,
-              speaker: 'Live Speaker',
-              text: seg.text,
-              translation: translation || undefined,
-              sourceLang: 'sat',
-              targetLang,
-              asrConfidence: seg.asr_confidence,
-              translationConfidence: transConf,
-              lexiconMatch: isLexicon,
-              needsReview: isNeedsReview,
-              confidenceTier: tier
-            };
-
-            setTranscripts(prev => [newSeg, ...prev]);
-            setInterimText('');
-            setIsProcessing(false);
+            await commitTranscriptUtterance(seg.text);
           },
           onError: (err: string) => {
-            console.warn('ASR Stream error:', err);
-            setErrorMessage(`Santali Neural ASR backend notice: ${err}. Ensure backend is running at http://127.0.0.1:5000.`);
-            setIsRecording(false);
-            if (audioMonitorRef.current) {
-              audioMonitorRef.current.stop();
-              audioMonitorRef.current = null;
-            }
-            setAudioQuality(null);
+            console.warn('ASR Stream notice:', err);
           }
         });
 
         await streamer.start();
         streamerRef.current = streamer;
+        isRecordingRef.current = true;
         setIsRecording(true);
+        return;
       } catch (err: any) {
-        setErrorMessage(`Failed to start Santali microphone capture: ${err?.message || err}`);
-        setIsRecording(false);
-        if (audioMonitorRef.current) {
-          audioMonitorRef.current.stop();
-          audioMonitorRef.current = null;
-        }
-        setAudioQuality(null);
+        console.warn('Neural streamer start failed, falling back to browser recognition:', err);
       }
-      return;
     }
 
-    // --- Hindi / English: Use Browser Native Acoustic Models ---
+    // --- Browser Native Speech Recognition ---
     const win = window as unknown as { webkitSpeechRecognition?: any; SpeechRecognition?: any };
     const SpeechRecognitionClass = win.SpeechRecognition || win.webkitSpeechRecognition;
 
@@ -280,99 +315,133 @@ export const SpeechToTextPage: React.FC = () => {
 
     try {
       const recognition = new SpeechRecognitionClass();
-      recognition.lang = sourceLang === 'eng' ? 'en-IN' : 'hi-IN';
+      recognition.lang = getSpeechRecognitionLang(sourceLang);
       recognition.continuous = true;
       recognition.interimResults = true;
 
+      currentAccumRef.current = { finalChunk: '', latestInterim: '' };
+      isRecordingRef.current = true;
       setIsRecording(true);
       setInterimText('');
 
-      recognition.onresult = async (event: any) => {
-        let interimAccum = '';
+      const resetSilenceTimer = (delayMs: number = 1400) => {
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
+          silenceTimerRef.current = null;
+        }
+        silenceTimerRef.current = setTimeout(() => {
+          if (!isRecordingRef.current) return;
+          const { finalChunk, latestInterim } = currentAccumRef.current;
+          const fullText = (finalChunk + (latestInterim ? ' ' + latestInterim : '')).trim();
+          if (fullText) {
+            currentAccumRef.current = { finalChunk: '', latestInterim: '' };
+            commitTranscriptUtterance(fullText);
+          }
+        }, delayMs);
+      };
+
+      recognition.onspeechstart = () => {
+        // Speech vocalization detected
+      };
+
+      recognition.onspeechend = () => {
+        // Quick 800ms silence countdown after speech ends
+        resetSilenceTimer(800);
+      };
+
+      recognition.onresult = (event: any) => {
+        if (!isRecordingRef.current) return;
+
+        let curInterim = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const transcriptSegment = event.results[i][0].transcript;
+          const trans = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            const spoken = transcriptSegment.trim();
-            if (spoken) {
-              setIsProcessing(true);
-              const trans = await translateText(spoken, sourceLang, targetLang);
-              const curSec = recordingSeconds;
-              const isLexicon = trans.reliability === 'verified';
-              const newSegment: TranscribeSegment = {
-                id: `rec-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-                time: `00:${Math.max(0, curSec - 4).toString().padStart(2, '0')} - 00:${curSec.toString().padStart(2, '0')}`,
-                startSec: Math.max(0, curSec - 4),
-                endSec: curSec,
-                speaker: 'Live Speaker',
-                text: spoken,
-                translation: trans.targetText,
-                sourceLang,
-                targetLang,
-                asrConfidence: null,
-                translationConfidence: isLexicon ? 0.98 : trans.reliability === 'dataset' ? 0.92 : 0.85,
-                lexiconMatch: isLexicon,
-                needsReview: false,
-                confidenceTier: isLexicon ? 'verified' : 'dataset'
-              };
-              setTranscripts(prev => [newSegment, ...prev]);
-              setInterimText('');
-              setIsProcessing(false);
-            }
+            currentAccumRef.current.finalChunk += (currentAccumRef.current.finalChunk ? ' ' : '') + trans.trim();
+            currentAccumRef.current.latestInterim = '';
           } else {
-            interimAccum += transcriptSegment;
+            curInterim += trans;
           }
         }
-        if (interimAccum) {
-          setInterimText(interimAccum);
+
+        if (curInterim) {
+          currentAccumRef.current.latestInterim = curInterim;
+        }
+
+        const liveDisplay = currentAccumRef.current.finalChunk
+          ? (currentAccumRef.current.latestInterim ? `${currentAccumRef.current.finalChunk} ${currentAccumRef.current.latestInterim}` : currentAccumRef.current.finalChunk)
+          : currentAccumRef.current.latestInterim;
+
+        if (liveDisplay) {
+          setInterimText(liveDisplay.trim());
+          resetSilenceTimer(1400);
         }
       };
 
       recognition.onerror = (e: any) => {
-        console.warn('Speech recognition error:', e);
-        setIsRecording(false);
-        if (audioMonitorRef.current) {
-          audioMonitorRef.current.stop();
-          audioMonitorRef.current = null;
+        if (e.error === 'no-speech' || e.error === 'aborted') {
+          return;
         }
-        setAudioQuality(null);
+        console.warn('Speech recognition notice:', e.error);
       };
 
       recognition.onend = () => {
-        setIsRecording(false);
-        if (audioMonitorRef.current) {
-          audioMonitorRef.current.stop();
-          audioMonitorRef.current = null;
+        // Keep continuous recognition active while recording is true
+        if (isRecordingRef.current) {
+          try {
+            recognition.start();
+          } catch {}
         }
-        setAudioQuality(null);
       };
 
       recognitionRef.current = recognition;
       recognition.start();
-    } catch (e) {
+    } catch (e: any) {
       console.warn('Speech recognition init error:', e);
+      isRecordingRef.current = false;
       setIsRecording(false);
       if (audioMonitorRef.current) {
         audioMonitorRef.current.stop();
         audioMonitorRef.current = null;
       }
       setAudioQuality(null);
+      setErrorMessage(`Failed to start microphone speech capture: ${e?.message || e}`);
     }
   };
 
   const handleStopRecording = () => {
+    isRecordingRef.current = false;
     setIsRecording(false);
-    setInterimText('');
+
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+
+    // Immediately commit any pending speech text
+    const { finalChunk, latestInterim } = currentAccumRef.current;
+    const pendingText = (finalChunk + (latestInterim ? ' ' + latestInterim : '')).trim() || interimText.trim();
+    if (pendingText) {
+      currentAccumRef.current = { finalChunk: '', latestInterim: '' };
+      commitTranscriptUtterance(pendingText);
+    } else {
+      setInterimText('');
+    }
+
     if (audioMonitorRef.current) {
       audioMonitorRef.current.stop();
       audioMonitorRef.current = null;
     }
     setAudioQuality(null);
+
     if (streamerRef.current) {
       streamerRef.current.stop();
       streamerRef.current = null;
     }
+
     if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch {}
+      try {
+        recognitionRef.current.stop();
+      } catch {}
       recognitionRef.current = null;
     }
   };
@@ -723,10 +792,19 @@ export const SpeechToTextPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Interim Live Recognition Text Preview */}
+                  {/* Real-time Emerald Live Recognition Bubble */}
                   {interimText && (
-                    <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl text-xs text-[#14532d] animate-pulse">
-                      <span className="font-bold">Recognizing:</span> {interimText}
+                    <div className="p-4 rounded-2xl bg-emerald-50/90 border border-emerald-300 text-emerald-950 shadow-sm animate-pulse transition-all">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-ping"></span>
+                          <span className="font-bold text-xs text-[#14532d] uppercase tracking-wider">Speaking now...</span>
+                        </div>
+                        <span className="text-[10px] bg-emerald-100 text-[#14532d] px-2 py-0.5 rounded-full font-mono font-semibold">Live Stream</span>
+                      </div>
+                      <p className="text-sm sm:text-base font-semibold text-slate-800 break-words leading-relaxed">
+                        {interimText}
+                      </p>
                     </div>
                   )}
 
@@ -736,7 +814,7 @@ export const SpeechToTextPage: React.FC = () => {
                       <button
                         onClick={handleStopRecording}
                         className="w-16 h-16 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow-lg shadow-red-500/30 transition-transform active:scale-95 animate-pulse cursor-pointer"
-                        title="Stop Recording"
+                        title="Finish Speaking"
                       >
                         <Square className="w-6 h-6 fill-current" />
                       </button>
@@ -750,7 +828,7 @@ export const SpeechToTextPage: React.FC = () => {
                       </button>
                     )}
                     <span className="text-xs font-bold text-slate-700">
-                      {isRecording ? 'Tap to finish recording' : 'Tap to start speaking'}
+                      {isRecording ? 'Tap to finish speaking' : 'Tap to start speaking'}
                     </span>
                   </div>
                 </div>
@@ -834,7 +912,19 @@ export const SpeechToTextPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
+                    {/* Auto-play voice toggle */}
+                    <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none bg-white border border-slate-200 px-2.5 py-1.5 rounded-xl shadow-2xs hover:border-[#249144] transition">
+                      <Volume2 className="w-3.5 h-3.5 text-[#249144]" />
+                      <span className="font-medium text-[11px]">Auto Voice</span>
+                      <input
+                        type="checkbox"
+                        checked={autoSpeak}
+                        onChange={(e) => setAutoSpeak(e.target.checked)}
+                        className="rounded border-slate-300 text-[#249144] focus:ring-[#249144] cursor-pointer"
+                      />
+                    </label>
+
                     <button
                       onClick={handleCopyAll}
                       disabled={transcripts.length === 0}
@@ -853,6 +943,22 @@ export const SpeechToTextPage: React.FC = () => {
                     </button>
                   </div>
                 </div>
+
+                {/* Real-time Streaming Emerald Card in Right Panel */}
+                {interimText && (
+                  <div className="mb-4 p-4 rounded-2xl bg-emerald-50/90 border border-emerald-300 text-emerald-950 shadow-md animate-pulse">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-ping"></span>
+                        <span className="font-bold text-xs text-[#14532d] uppercase tracking-wider">Speaking now...</span>
+                      </div>
+                      <span className="text-[10px] bg-emerald-100 text-[#14532d] px-2 py-0.5 rounded-full font-mono font-semibold">Live Transcription</span>
+                    </div>
+                    <p className="text-sm sm:text-base font-semibold text-slate-900 break-words leading-relaxed">
+                      {interimText}
+                    </p>
+                  </div>
+                )}
 
                 {/* Segments Stream */}
                 <div className="space-y-3 max-h-[440px] overflow-y-auto pr-1">
@@ -911,7 +1017,11 @@ export const SpeechToTextPage: React.FC = () => {
                                 setPlayingSegmentId(`src-${t.id}`);
                                 playTextSpeech(t.text, t.sourceLang, 0.9, () => setPlayingSegmentId(null));
                               }}
-                              className="p-1.5 rounded-lg bg-slate-50 hover:bg-emerald-50 text-slate-600 hover:text-[#249144] border border-slate-200 transition cursor-pointer flex-shrink-0"
+                              className={`p-1.5 rounded-lg border transition cursor-pointer flex-shrink-0 ${
+                                playingSegmentId === `src-${t.id}`
+                                  ? 'bg-emerald-100 text-[#14532d] border-emerald-300 animate-pulse'
+                                  : 'bg-slate-50 hover:bg-emerald-50 text-slate-600 hover:text-[#249144] border-slate-200'
+                              }`}
                               title={`Play Spoken Audio (${t.sourceLang.toUpperCase()})`}
                             >
                               <Volume2 className="w-3.5 h-3.5" />
@@ -980,7 +1090,11 @@ export const SpeechToTextPage: React.FC = () => {
                                   setPlayingSegmentId(`trans-${t.id}`);
                                   playTextSpeech(t.translation!, t.targetLang, 0.9, () => setPlayingSegmentId(null));
                                 }}
-                                className="p-1.5 rounded-lg bg-white hover:bg-emerald-50 text-slate-600 hover:text-[#249144] border border-slate-200 transition cursor-pointer flex-shrink-0"
+                                className={`p-1.5 rounded-lg border transition cursor-pointer flex-shrink-0 ${
+                                  playingSegmentId === `trans-${t.id}`
+                                    ? 'bg-emerald-100 text-[#14532d] border-emerald-300 animate-pulse'
+                                    : 'bg-white hover:bg-emerald-50 text-slate-600 hover:text-[#249144] border-slate-200'
+                                }`}
                                 title={`Play Translated Audio (${t.targetLang.toUpperCase()})`}
                               >
                                 <Volume2 className="w-3.5 h-3.5" />
