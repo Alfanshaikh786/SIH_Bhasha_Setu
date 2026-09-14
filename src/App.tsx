@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Navbar } from './components/layout/Navbar';
+import { HomeSidebarLayout } from './components/layout/HomeSidebar';
 import { ScrollToTop } from './components/common/ScrollToTop';
 import { PWAInstallPrompt } from './components/common/PWAInstallPrompt';
 
@@ -34,53 +35,86 @@ const PageLoadingFallback: React.FC = () => (
   </div>
 );
 
+/** Layout wrapper for all pages that use the standard top Navbar */
+const WithNavbar: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="min-h-screen flex flex-col bg-white text-slate-800">
+    <Navbar />
+    <div className="flex-1 flex flex-col">
+      {children}
+    </div>
+  </div>
+);
+
 export const App: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col bg-white text-slate-800">
+    <>
       <ScrollToTop />
-      <Navbar />
-      <div className="flex-1 flex flex-col">
-        <Suspense fallback={<PageLoadingFallback />}>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/home" element={<HomePage />} />
-            
-            {/* Core Workflows */}
-            <Route path="/field-mode" element={<FieldModePage />} />
-            <Route path="/teacher-mode" element={<TeacherModePage />} />
-            <Route path="/knowledge-base" element={<KnowledgeBasePage />} />
-            <Route path="/emergency-mode" element={<EmergencyModePage />} />
-            <Route path="/conversation" element={<SpeechToSpeechPage />} />
-
-            {/* Features */}
-            <Route path="/features/text-to-text" element={<TextToTextPage />} />
-            <Route path="/features/ocr" element={<OCRPage />} />
-            <Route path="/features/speech-to-text" element={<SpeechToTextPage />} />
-            <Route path="/features/speech-to-speech" element={<SpeechToSpeechPage />} />
-            <Route path="/features/text-to-speech" element={<TextToSpeechPage />} />
-            <Route path="/features/video-subtitle" element={<VideoSubtitlePage />} />
-            <Route path="/features/learning-studio" element={<LearningStudioPage />} />
-            
-            {/* Resources */}
-            <Route path="/resources/knowledge-base" element={<KnowledgeBasePage />} />
-            <Route path="/resources/learning-studio" element={<LearningStudioPage />} />
-            <Route path="/learning-studio" element={<LearningStudioPage />} />
-            <Route path="/resources/dictionary" element={<DictionaryPage />} />
-            
-            {/* Info & Support */}
-            <Route path="/about-us" element={<AboutPage />} />
-            <Route path="/contact-us" element={<ContactPage />} />
-            <Route path="/vaani-stream" element={<VaaniStreamPage />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            
-            {/* Fallback */}
-            <Route path="*" element={<HomePage />} />
-          </Routes>
-        </Suspense>
-      </div>
       <PWAInstallPrompt />
-    </div>
+      <Suspense fallback={<PageLoadingFallback />}>
+        <Routes>
+
+          {/* ── Home page: left sidebar layout ── */}
+          <Route
+            path="/"
+            element={
+              <HomeSidebarLayout>
+                <HomePage />
+              </HomeSidebarLayout>
+            }
+          />
+          <Route
+            path="/home"
+            element={
+              <HomeSidebarLayout>
+                <HomePage />
+              </HomeSidebarLayout>
+            }
+          />
+
+          {/* ── All other pages: standard top Navbar ── */}
+
+          {/* Core Workflows */}
+          <Route path="/field-mode" element={<WithNavbar><FieldModePage /></WithNavbar>} />
+          <Route path="/teacher-mode" element={<WithNavbar><TeacherModePage /></WithNavbar>} />
+          <Route path="/knowledge-base" element={<WithNavbar><KnowledgeBasePage /></WithNavbar>} />
+          <Route path="/emergency-mode" element={<WithNavbar><EmergencyModePage /></WithNavbar>} />
+          <Route path="/conversation" element={<WithNavbar><SpeechToSpeechPage /></WithNavbar>} />
+
+          {/* Features */}
+          <Route path="/features/text-to-text" element={<WithNavbar><TextToTextPage /></WithNavbar>} />
+          <Route path="/features/ocr" element={<WithNavbar><OCRPage /></WithNavbar>} />
+          <Route path="/features/speech-to-text" element={<WithNavbar><SpeechToTextPage /></WithNavbar>} />
+          <Route path="/features/speech-to-speech" element={<WithNavbar><SpeechToSpeechPage /></WithNavbar>} />
+          <Route path="/features/text-to-speech" element={<WithNavbar><TextToSpeechPage /></WithNavbar>} />
+          <Route path="/features/video-subtitle" element={<WithNavbar><VideoSubtitlePage /></WithNavbar>} />
+          <Route path="/features/learning-studio" element={<WithNavbar><LearningStudioPage /></WithNavbar>} />
+
+          {/* Resources */}
+          <Route path="/resources/knowledge-base" element={<WithNavbar><KnowledgeBasePage /></WithNavbar>} />
+          <Route path="/resources/learning-studio" element={<WithNavbar><LearningStudioPage /></WithNavbar>} />
+          <Route path="/learning-studio" element={<WithNavbar><LearningStudioPage /></WithNavbar>} />
+          <Route path="/resources/dictionary" element={<WithNavbar><DictionaryPage /></WithNavbar>} />
+
+          {/* Info & Support */}
+          <Route path="/about-us" element={<WithNavbar><AboutPage /></WithNavbar>} />
+          <Route path="/contact-us" element={<WithNavbar><ContactPage /></WithNavbar>} />
+          <Route path="/vaani-stream" element={<WithNavbar><VaaniStreamPage /></WithNavbar>} />
+          <Route path="/privacy-policy" element={<WithNavbar><PrivacyPolicyPage /></WithNavbar>} />
+          <Route path="/login" element={<WithNavbar><LoginPage /></WithNavbar>} />
+
+          {/* Fallback */}
+          <Route
+            path="*"
+            element={
+              <HomeSidebarLayout>
+                <HomePage />
+              </HomeSidebarLayout>
+            }
+          />
+
+        </Routes>
+      </Suspense>
+    </>
   );
 };
 

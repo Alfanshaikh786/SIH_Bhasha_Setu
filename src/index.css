@@ -129,3 +129,20 @@ video::cue {
   padding: 3px 8px !important;
   border-radius: 4px !important;
 }
+
+/* Warm Organic Theme & Handwriting typography */
+.font-handwriting {
+  font-family: 'Caveat', cursive, sans-serif;
+}
+
+.bg-organic-canvas {
+  background-color: #fcfbf7;
+}
+
+.bg-organic-card {
+  background-color: #faf8f4;
+}
+
+.border-organic-border {
+  border-color: #ede7dc;
+}
