@@ -13,19 +13,86 @@ import {
   Menu,
   User,
   LogOut,
+  FileText,
+  ScanLine,
+  Mic,
+  AudioLines,
+  Volume2,
+  Film,
+  MapPin,
+  UserCheck,
+  AlertTriangle,
+  Library,
+  BookMarked,
+  NotebookPen,
 } from 'lucide-react';
 import { BhashaSetuLogo } from '../common/BhashaSetuLogo';
 import { LoginModal } from '../common/LoginModal';
 import { getCurrentUser, logoutUser } from '../../services/authService';
 
-/* ─── Sidebar nav items ─── */
-const NAV_ITEMS = [
-  { icon: Home, label: 'Home', to: '/' },
-  { icon: Languages, label: 'Features', to: '/features/text-to-text' },
-  { icon: Sparkles, label: 'Additional Features', to: '/field-mode' },
-  { icon: BookOpen, label: 'Resources', to: '/resources/dictionary' },
-  { icon: GraduationCap, label: 'Learning Studio', to: '/features/learning-studio' },
-  { icon: Info, label: 'About', to: '/about-us' },
+/* ─── Types ─── */
+interface NavChild {
+  icon: React.ElementType;
+  label: string;
+  to: string;
+}
+
+interface NavItem {
+  icon: React.ElementType;
+  label: string;
+  to?: string;            // single-page items navigate here
+  children?: NavChild[];  // items with children show a dropdown
+}
+
+/* ─── Navigation structure ─── */
+const NAV_ITEMS: NavItem[] = [
+  {
+    icon: Home,
+    label: 'Home',
+    to: '/',
+  },
+  {
+    icon: Languages,
+    label: 'Features',
+    children: [
+      { icon: FileText,   label: 'Text to Text Translation', to: '/features/text-to-text' },
+      { icon: ScanLine,   label: 'OCR',                      to: '/features/ocr' },
+      { icon: Mic,        label: 'Speech to Text',            to: '/features/speech-to-text' },
+      { icon: AudioLines, label: 'Voice to Voice',            to: '/conversation' },
+      { icon: Volume2,    label: 'Text to Speech',            to: '/features/text-to-speech' },
+      { icon: Film,       label: 'Video Subtitle',            to: '/features/video-subtitle' },
+    ],
+  },
+  {
+    icon: Sparkles,
+    label: 'Additional Features',
+    children: [
+      { icon: MapPin,        label: 'Field Mode',              to: '/field-mode' },
+      { icon: UserCheck,     label: 'Teacher Mode',            to: '/teacher-mode' },
+      { icon: AlertTriangle, label: 'Emergency Mode',          to: '/emergency-mode' },
+      { icon: Library,       label: 'Knowledge Base',          to: '/knowledge-base' },
+    ],
+  },
+  {
+    icon: BookOpen,
+    label: 'Resources',
+    children: [
+      { icon: NotebookPen, label: 'Dictionary / Lexicon',  to: '/resources/dictionary' },
+      { icon: BookMarked,  label: 'Knowledge Base',        to: '/resources/knowledge-base' },
+    ],
+  },
+  {
+    icon: GraduationCap,
+    label: 'Learning Studio',
+    children: [
+      { icon: GraduationCap, label: 'Learning Studio', to: '/features/learning-studio' },
+    ],
+  },
+  {
+    icon: Info,
+    label: 'About',
+    to: '/about-us',
+  },
 ];
 
 /* ─── Tiny botanical leaf SVG decorations ─── */
@@ -50,72 +117,179 @@ const SidebarLeaves: React.FC = () => (
   </>
 );
 
+const SIDEBAR_W = 270;
+
 interface HomeSidebarLayoutProps {
   children: React.ReactNode;
 }
 
 export const HomeSidebarLayout: React.FC<HomeSidebarLayoutProps> = ({ children }) => {
   const location = useLocation();
-  const [loginOpen, setLoginOpen] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<{ email: string; name: string; role: string } | null>(null);
+  const [loginOpen, setLoginOpen]       = useState(false);
+  const [mobileOpen, setMobileOpen]     = useState(false);
+  const [sidebarOpen, setSidebarOpen]   = useState(true);
+  const [openSection, setOpenSection]   = useState<string | null>(null); // accordion state
+  const [currentUser, setCurrentUser]   = useState<{ email: string; name: string; role: string } | null>(null);
 
   useEffect(() => {
     setCurrentUser(getCurrentUser());
   }, [location.pathname, loginOpen]);
 
+  // Close mobile drawer on navigation
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  // Reset accordion when sidebar is collapsed
+  useEffect(() => {
+    if (!sidebarOpen) setOpenSection(null);
+  }, [sidebarOpen]);
 
   const isActive = (to: string) => {
     if (to === '/') return location.pathname === '/';
     return location.pathname.startsWith(to);
   };
 
-  return (
-    <div className="min-h-screen flex bg-[#fcfbf7]">
+  // Check if any child of a nav item is the current active route
+  const isParentActive = (item: NavItem) => {
+    if (item.to) return isActive(item.to);
+    if (item.children) return item.children.some(c => isActive(c.to));
+    return false;
+  };
 
-      {/* ── Desktop Left Sidebar ── */}
+  const toggleSection = (label: string) => {
+    setOpenSection(prev => (prev === label ? null : label));
+  };
+
+  /* ─── Renders a single nav item (used in both desktop sidebar and mobile drawer) ─── */
+  const renderNavItem = (item: NavItem, onChildClick?: () => void) => {
+    const hasChildren = Boolean(item.children?.length);
+    const parentActive = isParentActive(item);
+    const isOpen = openSection === item.label;
+
+    if (!hasChildren && item.to) {
+      // Simple single link — navigate directly
+      return (
+        <div key={item.label}>
+          <Link
+            to={item.to}
+            onClick={onChildClick}
+            className={`flex items-center gap-3.5 px-3.5 py-3 rounded-2xl font-medium text-[15px] transition-all duration-150 group ${
+              parentActive
+                ? 'bg-[#1b5e3b] text-white shadow-sm'
+                : 'text-[#3d3425] hover:bg-[#e5dcc8] hover:text-[#1b5e3b]'
+            }`}
+          >
+            <item.icon
+              className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${
+                parentActive ? 'text-white' : 'text-[#4d7358] group-hover:text-[#1b5e3b]'
+              }`}
+            />
+            <span className="flex-1">{item.label}</span>
+          </Link>
+        </div>
+      );
+    }
+
+    // Parent with dropdown children — accordion
+    return (
+      <div key={item.label}>
+        {/* Parent toggle button */}
+        <button
+          type="button"
+          onClick={() => toggleSection(item.label)}
+          className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-2xl font-medium text-[15px] transition-all duration-150 group cursor-pointer ${
+            parentActive && !isOpen
+              ? 'bg-[#1b5e3b]/10 text-[#1b5e3b]'
+              : 'text-[#3d3425] hover:bg-[#e5dcc8] hover:text-[#1b5e3b]'
+          }`}
+        >
+          <item.icon
+            className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${
+              parentActive && !isOpen ? 'text-[#1b5e3b]' : 'text-[#4d7358] group-hover:text-[#1b5e3b]'
+            }`}
+          />
+          <span className="flex-1 text-left">{item.label}</span>
+          {/* Chevron rotates when open */}
+          <ChevronRight
+            className={`w-4 h-4 flex-shrink-0 text-[#9e8e72] transition-transform duration-200 ${
+              isOpen ? 'rotate-90' : 'rotate-0'
+            }`}
+          />
+        </button>
+
+        {/* Children — smooth height transition via max-height */}
+        <div
+          className="overflow-hidden transition-all duration-250 ease-in-out"
+          style={{ maxHeight: isOpen ? `${(item.children?.length ?? 0) * 48 + 8}px` : '0px' }}
+        >
+          <div className="mt-0.5 flex flex-col gap-0.5 pb-1">
+            {item.children?.map(child => {
+              const childActive = isActive(child.to);
+              return (
+                <Link
+                  key={child.to}
+                  to={child.to}
+                  onClick={onChildClick}
+                  className={`flex items-center gap-3 pl-10 pr-3.5 py-2.5 rounded-xl text-[13.5px] font-medium transition-all duration-150 group ${
+                    childActive
+                      ? 'bg-[#1b5e3b] text-white shadow-xs'
+                      : 'text-[#5a4a35] hover:bg-[#e5dcc8] hover:text-[#1b5e3b]'
+                  }`}
+                >
+                  <child.icon
+                    className={`w-3.5 h-3.5 flex-shrink-0 ${
+                      childActive ? 'text-white' : 'text-[#7a8e7a] group-hover:text-[#1b5e3b]'
+                    }`}
+                  />
+                  <span>{child.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen flex bg-[#fcfbf7] overflow-x-hidden">
+
+      {/* ══════════════════════════════════════════════
+          DESKTOP LEFT SIDEBAR — collapsible
+      ══════════════════════════════════════════════ */}
       <aside
-        className="hidden lg:flex flex-col fixed top-0 left-0 h-full w-[270px] z-40 overflow-hidden"
-        style={{ background: 'linear-gradient(160deg, #f5f0e8 0%, #ede6d6 100%)' }}
+        className="hidden lg:flex flex-col fixed top-0 left-0 h-full z-40 overflow-hidden flex-shrink-0"
+        style={{
+          width: `${SIDEBAR_W}px`,
+          background: 'linear-gradient(160deg, #f5f0e8 0%, #ede6d6 100%)',
+          transform: sidebarOpen ? 'translateX(0)' : `translateX(-${SIDEBAR_W}px)`,
+          transition: 'transform 300ms ease-in-out',
+        }}
       >
         <SidebarLeaves />
 
-        {/* Logo */}
-        <div className="px-6 pt-7 pb-5 flex-shrink-0 relative z-10">
+        {/* ── Logo row: Logo + Hamburger ── */}
+        <div className="px-6 pt-7 pb-5 flex-shrink-0 relative z-10 flex items-center justify-between">
           <Link to="/" className="inline-block">
             <BhashaSetuLogo size="md" showTagline={true} />
           </Link>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="p-2 rounded-xl text-[#3d3425] hover:bg-[#e5dcc8] transition-colors duration-150 cursor-pointer flex-shrink-0 ml-2"
+            aria-label="Collapse sidebar"
+            title="Collapse sidebar"
+          >
+            <Menu className="w-5 h-5 text-[#4d7358]" />
+          </button>
         </div>
 
         {/* Separator */}
         <div className="mx-6 h-px bg-[#cec5b0] opacity-60 flex-shrink-0" />
 
-        {/* Nav */}
+        {/* Nav — scrollable so long accordion lists don't overflow */}
         <nav className="flex-1 px-4 py-5 flex flex-col gap-1 overflow-y-auto relative z-10">
-          {NAV_ITEMS.map(({ icon: Icon, label, to }) => {
-            const active = isActive(to);
-            return (
-              <Link
-                key={to}
-                to={to}
-                className={`flex items-center gap-3.5 px-3.5 py-3 rounded-2xl font-medium text-[15px] transition-all duration-150 group ${
-                  active
-                    ? 'bg-[#1b5e3b] text-white shadow-sm'
-                    : 'text-[#3d3425] hover:bg-[#e5dcc8] hover:text-[#1b5e3b]'
-                }`}
-              >
-                <Icon
-                  className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${
-                    active ? 'text-white' : 'text-[#4d7358] group-hover:text-[#1b5e3b]'
-                  }`}
-                />
-                <span>{label}</span>
-              </Link>
-            );
-          })}
+          {NAV_ITEMS.map(item => renderNavItem(item))}
         </nav>
 
         {/* Bottom separator */}
@@ -139,8 +313,32 @@ export const HomeSidebarLayout: React.FC<HomeSidebarLayoutProps> = ({ children }
         </div>
       </aside>
 
-      {/* ── Mobile Topbar ── */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 border-b border-[#d8ccba]/60 shadow-sm"
+      {/* ══════════════════════════════════════════════
+          DESKTOP COLLAPSED HAMBURGER
+      ══════════════════════════════════════════════ */}
+      <div
+        className="hidden lg:flex fixed top-0 left-0 z-50 items-center"
+        style={{
+          opacity: sidebarOpen ? 0 : 1,
+          pointerEvents: sidebarOpen ? 'none' : 'auto',
+          transition: 'opacity 250ms ease-in-out',
+        }}
+      >
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="m-3 p-2.5 rounded-xl text-[#3d3425] bg-[#f5f0e8] border border-[#d8ccba] shadow-sm hover:bg-[#e5dcc8] transition-colors duration-150 cursor-pointer"
+          aria-label="Open sidebar"
+          title="Open sidebar"
+        >
+          <Menu className="w-5 h-5 text-[#4d7358]" />
+        </button>
+      </div>
+
+      {/* ══════════════════════════════════════════════
+          MOBILE TOPBAR
+      ══════════════════════════════════════════════ */}
+      <header
+        className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 border-b border-[#d8ccba]/60 shadow-sm"
         style={{ background: 'rgba(245,240,232,0.97)', backdropFilter: 'blur(8px)' }}
       >
         <Link to="/">
@@ -174,7 +372,9 @@ export const HomeSidebarLayout: React.FC<HomeSidebarLayoutProps> = ({ children }
         </div>
       </header>
 
-      {/* ── Mobile Drawer ── */}
+      {/* ══════════════════════════════════════════════
+          MOBILE DRAWER — with accordion dropdowns
+      ══════════════════════════════════════════════ */}
       {mobileOpen && (
         <div
           className="lg:hidden fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
@@ -193,24 +393,7 @@ export const HomeSidebarLayout: React.FC<HomeSidebarLayoutProps> = ({ children }
             <div className="mx-5 h-px bg-[#cec5b0] opacity-60" />
 
             <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
-              {NAV_ITEMS.map(({ icon: Icon, label, to }) => {
-                const active = isActive(to);
-                return (
-                  <Link
-                    key={to}
-                    to={to}
-                    onClick={() => setMobileOpen(false)}
-                    className={`flex items-center gap-3.5 px-4 py-3 rounded-2xl font-medium text-sm transition-all ${
-                      active
-                        ? 'bg-[#1b5e3b] text-white shadow-sm'
-                        : 'text-[#3d3425] hover:bg-[#e5dcc8] hover:text-[#1b5e3b]'
-                    }`}
-                  >
-                    <Icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-white' : 'text-[#4d7358]'}`} />
-                    <span>{label}</span>
-                  </Link>
-                );
-              })}
+              {NAV_ITEMS.map(item => renderNavItem(item, () => setMobileOpen(false)))}
             </nav>
 
             <div className="p-4 border-t border-[#cec5b0]/60">
@@ -226,47 +409,57 @@ export const HomeSidebarLayout: React.FC<HomeSidebarLayoutProps> = ({ children }
         </div>
       )}
 
-      {/* ── Main content area ── */}
-      <div className="flex-1 lg:ml-[270px] flex flex-col min-h-screen relative">
+      {/* ══════════════════════════════════════════════
+          MAIN CONTENT AREA
+      ══════════════════════════════════════════════ */}
+      <div
+        className="flex-1 flex flex-col min-h-screen relative"
+        style={{
+          marginLeft: sidebarOpen ? `${SIDEBAR_W}px` : '0px',
+          transition: 'margin-left 300ms ease-in-out',
+        }}
+      >
 
-        {/* Desktop top-right: Install App + Login */}
-        <div className="hidden lg:flex items-center gap-3 fixed top-6 right-8 z-30">
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent('trigger-pwa-install'))}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-[#1b5e3b] bg-white border border-[#cec5b0] rounded-xl shadow-xs hover:shadow-sm transition cursor-pointer"
-          >
-            <Smartphone className="w-4 h-4" />
-            <span>Install App</span>
-          </button>
-
-          {currentUser ? (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200">
-                <div className="w-6 h-6 rounded-full bg-[#249144] text-white flex items-center justify-center text-[10px] font-bold">
-                  {currentUser.name ? currentUser.name[0].toUpperCase() : 'U'}
-                </div>
-                <span className="text-xs font-semibold text-slate-800 max-w-[100px] truncate">
-                  {currentUser.name || currentUser.email}
-                </span>
-              </div>
-              <button
-                onClick={() => { logoutUser(); setCurrentUser(null); }}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-100 transition cursor-pointer"
-                title="Logout"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
+        {/* Desktop top-right: Install App + Login — hidden on home page */}
+        {location.pathname !== '/' && (
+          <div className="hidden lg:flex items-center gap-3 fixed top-6 right-8 z-30">
             <button
-              onClick={() => setLoginOpen(true)}
-              className="inline-flex items-center gap-1.5 px-5 py-2 text-sm font-semibold text-white bg-[#1b5e3b] rounded-xl shadow-sm hover:bg-[#14472c] transition cursor-pointer"
+              onClick={() => window.dispatchEvent(new CustomEvent('trigger-pwa-install'))}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-[#1b5e3b] bg-white border border-[#cec5b0] rounded-xl shadow-xs hover:shadow-sm transition cursor-pointer"
             >
-              <User className="w-4 h-4" />
-              <span>Login</span>
+              <Smartphone className="w-4 h-4" />
+              <span>Install App</span>
             </button>
-          )}
-        </div>
+
+            {currentUser ? (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                  <div className="w-6 h-6 rounded-full bg-[#249144] text-white flex items-center justify-center text-[10px] font-bold">
+                    {currentUser.name ? currentUser.name[0].toUpperCase() : 'U'}
+                  </div>
+                  <span className="text-xs font-semibold text-slate-800 max-w-[100px] truncate">
+                    {currentUser.name || currentUser.email}
+                  </span>
+                </div>
+                <button
+                  onClick={() => { logoutUser(); setCurrentUser(null); }}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-100 transition cursor-pointer"
+                  title="Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setLoginOpen(true)}
+                className="inline-flex items-center gap-1.5 px-5 py-2 text-sm font-semibold text-white bg-[#1b5e3b] rounded-xl shadow-sm hover:bg-[#14472c] transition cursor-pointer"
+              >
+                <User className="w-4 h-4" />
+                <span>Login</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Page content */}
         <main className="flex-1 pt-16 lg:pt-0">

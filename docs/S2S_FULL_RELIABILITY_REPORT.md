@@ -35,7 +35,7 @@ TTS PLAYBACK (Single Turn)
 IDLE (Zero Second Clicks Needed)
 ```
 
----
+
 
 ## 2. Hardened Architecture & Key Fixes
 

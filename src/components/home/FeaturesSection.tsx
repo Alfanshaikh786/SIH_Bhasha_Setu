@@ -75,7 +75,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
 
 export const FeaturesSection: React.FC = () => {
   return (
-    <section id="features" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#fcfbf7] border-t border-[#ede7dc] relative overflow-hidden">
+    <section id="features" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#fcfbf7] relative overflow-hidden">
       
       {/* Decorative Botanical Foliage in Background */}
       <div className="absolute top-12 -left-8 w-56 h-56 pointer-events-none opacity-35 select-none -z-10">
